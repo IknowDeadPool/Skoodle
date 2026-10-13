@@ -16,6 +16,8 @@ const {
     registerGameHandlers
 } = require("./sockets/gameHandlers");
 
+const registerDrawingHandlers = require("./sockets/drawingHandlers");
+
 // -------------------------
 // SERVICES
 // -------------------------
@@ -93,6 +95,12 @@ io.on("connection", socket => {
         socket,
         gameController
     );
+    registerDrawingHandlers(
+        io,
+        socket,
+        gameController
+    );
+
 
     socket.on("disconnect", reason => {
         console.log("Disconnected:", socket.id, reason);

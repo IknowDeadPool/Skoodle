@@ -663,50 +663,50 @@ function registerGameHandlers(io, socket, controller) {
     // DRAW STROKES
     // -------------------------
 
-    socket.on("draw:stroke", data => {
-        try {
-            const { roomCode, game } = currentGame();
+    // socket.on("draw:stroke", data => {
+    //     try {
+    //         const { roomCode, game } = currentGame();
 
-            if (game.state !== "DRAWING") return;
+    //         if (game.state !== "DRAWING") return;
 
-            if (
-                game.getCurrentDrawer()?.getId() !== socket.id
-            ) return;
+    //         if (
+    //             game.getCurrentDrawer()?.getId() !== socket.id
+    //         ) return;
 
-            if (
-                !data ||
-                typeof data !== "object" ||
-                Array.isArray(data)
-            ) return;
+    //         if (
+    //             !data ||
+    //             typeof data !== "object" ||
+    //             Array.isArray(data)
+    //         ) return;
 
-            // Relay strokes to everyone except the drawer.
-            socket.to(roomCode).emit("draw:stroke", data);
+    //         // Relay strokes to everyone except the drawer.
+    //         socket.to(roomCode).emit("draw:stroke", data);
 
-        } catch (error) {
-            console.error("Draw stroke error:", error.message);
-        }
-    });
+    //     } catch (error) {
+    //         console.error("Draw stroke error:", error.message);
+    //     }
+    // });
 
-    // -------------------------
-    // CLEAR CANVAS
-    // -------------------------
+    // // -------------------------
+    // // CLEAR CANVAS
+    // // -------------------------
 
-    socket.on("draw:clear", () => {
-        try {
-            const { roomCode, game } = currentGame();
+    // socket.on("draw:clear", () => {
+    //     try {
+    //         const { roomCode, game } = currentGame();
 
-            if (game.state !== "DRAWING") return;
+    //         if (game.state !== "DRAWING") return;
 
-            if (
-                game.getCurrentDrawer()?.getId() !== socket.id
-            ) return;
+    //         if (
+    //             game.getCurrentDrawer()?.getId() !== socket.id
+    //         ) return;
 
-            io.to(roomCode).emit("draw:clear");
+    //         io.to(roomCode).emit("draw:clear");
 
-        } catch (error) {
-            console.error("Clear canvas error:", error.message);
-        }
-    });
+    //     } catch (error) {
+    //         console.error("Clear canvas error:", error.message);
+    //     }
+    // });
 }
 
 module.exports = {
