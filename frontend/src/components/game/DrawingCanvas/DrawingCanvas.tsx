@@ -328,7 +328,7 @@ function replay(ctx: CanvasRenderingContext2D, state: DrawingState) {
 }
 
 export default function DrawingCanvas() {
-  const { drawerId, isDrawing, round } = useGameState();
+  const { playerId,drawerId, isDrawing, round } = useGameState();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<DrawingState | null>(null);
@@ -344,7 +344,11 @@ export default function DrawingCanvas() {
   const [redoCount, setRedoCount] = useState(0);
   const [cursorVisible, setCursorVisible] = useState(false);
 
-  const canDraw = socket.id === drawerId && isDrawing;
+ 
+
+const isDrawer = playerId !== null && playerId === drawerId;
+
+const canDraw = isDrawer && isDrawing;
   const size = tool === "eraser" ? eraserSize : penSize;
 
   const renderState = useCallback((state: DrawingState) => {

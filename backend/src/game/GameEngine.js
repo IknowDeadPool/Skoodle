@@ -128,46 +128,46 @@ class GameEngine {
 
 
 
-    
-getPublicSnapshot() {
-    const drawer = this.getCurrentDrawer();
 
-    const endsAt =
-        this.state === "DRAWING"
-            ? this.turnEndsAt
-            : this.state === "WORD_SELECTION"
-                ? this.wordSelectionEndsAt
-                : null;
+    getPublicSnapshot() {
+        const drawer = this.getCurrentDrawer();
 
-    const remainingTime = endsAt
-        ? Math.max(
-            0,
-            Math.ceil((endsAt - Date.now()) / 1000)
-        )
-        : null;
+        const endsAt =
+            this.state === "DRAWING"
+                ? this.turnEndsAt
+                : this.state === "WORD_SELECTION"
+                    ? this.wordSelectionEndsAt
+                    : null;
 
-    return {
-        state: this.state,
-        round: this.currentRound,
-        drawerId: drawer?.getId() ?? null,
+        const remainingTime = endsAt
+            ? Math.max(
+                0,
+                Math.ceil((endsAt - Date.now()) / 1000)
+            )
+            : null;
 
-        maskedWord:
-            this.state === "DRAWING" && this.currentWord
-                ? this.wordManager.maskWord(this.currentWord)
-                : null,
+        return {
+            state: this.state,
+            round: this.currentRound,
+            drawerId: drawer?.getId() ?? null,
 
-        endsAt,
-        remainingTime,
+            maskedWord:
+                this.state === "DRAWING" && this.currentWord
+                    ? this.wordManager.maskWord(this.currentWord)
+                    : null,
 
-        players: this.room.players.map(player => ({
-            id: player.getId(),
-            name: player.getName(),
-            score: player.getScore()
-        })),
+            endsAt,
+            remainingTime,
 
-        drawing: this.drawing.snapshot()
-    };
-}
+            players: this.room.players.map(player => ({
+                id: player.getId(),
+                name: player.getName(),
+                score: player.getScore()
+            })),
+
+            drawing: this.drawing.snapshot()
+        };
+    }
 
 
 

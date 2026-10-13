@@ -32,5 +32,4 @@ class MatchmakingService {
     );
 }
 }
-
 module.exports = MatchmakingService;

@@ -1,272 +1,15 @@
-// function registerGameHandlers(io, socket, roomService, getGame, games) {
-
-//     function currentGame() {
-//         const roomCode = socket.data.roomCode;
-//         if (!roomCode) throw new Error("Not in a room");
-
-//         return {
-//             roomCode,
-//             game: getGame(roomCode)
-//         };
-//     }
-
-//     function sendWordChoices(roomCode, game) {
-//         clearGameTimer(game);
-
-//         const drawer = game.getCurrentDrawer();
-//         if (!drawer) return;
-
-//         const choices = game.generateWordChoices();
-
-//         io.to(drawer.getId()).emit("game:wordChoices", choices);
-
-//         io.to(roomCode).emit("game:turnStarted", {
-//             drawerId: drawer.getId(),
-//             round: game.currentRound
-//         });
-
-//         game.timer = setTimeout(() => {
-//             if (game.state !== "WORD_SELECTION") return;
-//             if (games.get(roomCode) !== game) return;
-
-//             const selectedWord = choices[0];
-
-//             const maskedWord = game.selectWord(
-//                 drawer.getId(),
-//                 selectedWord
-//             );
-
-//             if (maskedWord === null) return;
-
-//             io.to(roomCode).emit("game:drawingStarted", {
-//                 drawerId: drawer.getId(),
-//                 maskedWord,
-//                 duration: Number(game.room.settings.drawTime) || 80
-//             });
-
-//             scheduleTurnEnd(roomCode, game);
-//         }, 10000);
-//     }
-
-//     function advanceTurn(roomCode, game) {
-//         clearGameTimer(game);
-
-//         if (game.state === "FINISHED") return;
-
-//         const result = game.checkGameOver();
-
-//         if (result?.gameOver) {
-//             finishGame(roomCode, game);
-//             return;
-//         }
-
-//         const drawer = game.nextTurn();
-
-//         if (game.state === "FINISHED") {
-//             finishGame(roomCode, game);
-//             return;
-//         }
-
-//         if (drawer) {
-//             sendWordChoices(roomCode, game);
-//         }
-//     }
-
-//     function finishGame(roomCode, game, forcedWinner = null) {
-//         if (games.get(roomCode) !== game) return;
-
-//         clearGameTimer(game);
-//         game.state = "FINISHED";
-//         game.room.status = "FINISHED";
-
-//         const scores = game.room.players
-//             .map(p => ({
-//                 id: p.getId(),
-//                 name: p.getName(),
-//                 score: p.getScore()
-//             }))
-//             .sort((a, b) => b.score - a.score);
-
-//         io.to(roomCode).emit("game:finished", {
-//             winner: forcedWinner || scores[0] || null,
-//             scores
-//         });
-
-//         games.delete(roomCode);
-//     }
-
-//     function handleError(callback, error) {
-//         callback?.({ success: false, error: error.message });
-//     }
-
-//     socket.on("game:start", (data, callback) => {
-//         try {
-//             const { roomCode, game } = currentGame();
-
-//             if (
-//                 game.room.type === "PRIVATE" &&
-//                 game.room.host?.getId() !== socket.id
-//             ) {
-//                 throw new Error("Only the host can start the game");
-//             }
-
-//             game.startGame();
-//             sendWordChoices(roomCode, game);
-
-//             callback?.({ success: true });
-//         } catch (error) {
-//             handleError(callback, error);
-//         }
-//     });
-
-//     function clearGameTimer(game) {
-//         if (game.timer) {
-//             clearTimeout(game.timer);
-//             game.timer = null;
-//         }
-//     }
-
-//     function scheduleTurnEnd(roomCode, game) {
-//         clearGameTimer(game);
-
-//         const duration = Number(game.room.settings.drawTime) || 80;
-
-//         game.timer = setTimeout(() => {
-//             if (game.state !== "DRAWING") return;
-//             if (games.get(roomCode) !== game) return;
-
-//             io.to(roomCode).emit("game:turnEnded", {
-//                 word: game.currentWord
-//             });
-
-//             advanceTurn(roomCode, game);
-//         }, duration * 1000);
-//     }
-
-
-//     socket.on("game:selectWord", (data, callback) => {
-//         try {
-//             const { roomCode, game } = currentGame();
-
-//             const maskedWord = game.selectWord(
-//                 socket.id,
-//                 data?.word
-//             );
-
-//             if (maskedWord === null) {
-//                 throw new Error("Invalid word selection");
-//             }
-
-//             io.to(roomCode).emit("game:drawingStarted", {
-//                 drawerId: socket.id,
-//                 maskedWord,
-//                 duration: game.room.settings.drawTime || 80
-//             });
-
-//             scheduleTurnEnd(roomCode, game);
-//             callback?.({ success: true });
-
-//         } catch (error) {
-//             handleError(callback, error);
-//         }
-//     });
-
-
-//     socket.on("chat:message", (data, callback) => {
-//         try {
-//             const { roomCode, game } = currentGame();
-
-//             const message = data?.message;
-
-//             if (typeof message !== "string" ||
-//                 !message.trim() ||
-//                 message.length > 200) {
-//                 throw new Error("Invalid message");
-//             }
-
-//             if (game.state !== "DRAWING") {
-//                 io.to(roomCode).emit("chat:message", {
-//                     playerId: socket.id,
-//                     message
-//                 });
-
-//                 callback?.({ success: true, status: "CHAT" });
-//                 return;
-//             }
-
-//             const result = game.submitGuess(socket.id, message);
-
-//             if (result.status === "CORRECT") {
-//                 io.to(roomCode).emit("game:correctGuess", {
-//                     playerId: socket.id,
-//                     points: result.points
-//                 });
-//             } else if (result.status === "CLOSE") {
-//                 socket.emit("game:closeGuess", {
-//                     message: "You're very close!"
-//                 });
-//             } else if (result.status === "INCORRECT") {
-//                 io.to(roomCode).emit("chat:message", {
-//                     playerId: socket.id,
-//                     message
-//                 });
-//             }
-
-//             callback?.({ success: true, status: result.status });
-
-//         } catch (error) {
-//             handleError(callback, error);
-//         }
-//     });
-
-//     socket.on("draw:stroke", (data) => {
-//         try {
-//             const { roomCode, game } = currentGame();
-
-//             if (
-//                 game.state !== "DRAWING" ||
-//                 game.getCurrentDrawer()?.getId() !== socket.id
-//             ) return;
-
-//             if (!data || typeof data !== "object") return;
-
-//             socket.to(roomCode).emit("draw:stroke", data);
-
-//         } catch (_) { }
-//     });
-
-//     socket.on("draw:clear", () => {
-//         try {
-//             const { roomCode, game } = currentGame();
-
-//             if (
-//                 game.state !== "DRAWING" ||
-//                 game.getCurrentDrawer()?.getId() !== socket.id
-//             ) return;
-
-//             io.to(roomCode).emit("draw:clear");
-
-//         } catch (_) { }
-//     });
-// }
-
-// module.exports = registerGameHandlers;
-
-
-
-
 function createGameController(io, getGame, games) {
 
-    
-function clearGameTimer(game) {
-    if (game.timer) {
-        clearTimeout(game.timer);
-    }
 
-    game.timer = null;
-    game.turnEndsAt = null;
-    game.wordSelectionEndsAt = null;
-}
+    function clearGameTimer(game) {
+        if (game.timer) {
+            clearTimeout(game.timer);
+        }
+
+        game.timer = null;
+        game.turnEndsAt = null;
+        game.wordSelectionEndsAt = null;
+    }
 
 
     function finishGame(roomCode, game, forcedWinner = null) {
@@ -377,9 +120,9 @@ function clearGameTimer(game) {
         io.to(roomCode).emit("draw:state", game.drawing.snapshot());
 
         // Only the drawer receives the actual word choices.
-        io.to(drawer.getId()).emit("game:wordChoices", choices);
+        //io.to(drawer.getId()).emit("game:wordChoices", choices);
+        emitToPlayer(game, drawer.getId(), "game:wordChoices", choices);
 
-        
 
         // Automatically choose a word if the drawer does not
         // select one within 10 seconds.
@@ -421,69 +164,107 @@ function clearGameTimer(game) {
     }
 
 
-    
-function selectWord(roomCode, playerId, word) {
-    const game = getGame(roomCode);
 
-    const maskedWord = game.selectWord(playerId, word);
+    function selectWord(roomCode, playerId, word) {
+        const game = getGame(roomCode);
 
-    if (maskedWord === null) {
-        throw new Error("Invalid word selection");
+        const maskedWord = game.selectWord(playerId, word);
+
+        if (maskedWord === null) {
+            throw new Error("Invalid word selection");
+        }
+
+        const duration = Number(game.room.settings.drawTime) || 80;
+
+        // Establish the server deadline before notifying players.
+        scheduleTurnEnd(roomCode, game);
+
+        // Only the drawer receives the actual word.
+        emitToPlayer(game, playerId, "game:selectedWord", {
+            word: game.currentWord
+        });
+
+        // Everyone receives the same drawing deadline.
+        io.to(roomCode).emit("game:drawingStarted", {
+            drawerId: playerId,
+            maskedWord,
+            duration,
+            endsAt: game.turnEndsAt
+        });
+
+        return maskedWord;
     }
 
-    const duration = Number(game.room.settings.drawTime) || 80;
 
-    // Establish the server deadline before notifying players.
-    scheduleTurnEnd(roomCode, game);
 
-    // Only the drawer receives the actual word.
-    io.to(playerId).emit("game:selectedWord", {
-        word: game.currentWord
-    });
+    // function handlePlayerLeave(roomCode, wasDrawer = false) {
+    //     const game = games.get(roomCode);
 
-    // Everyone receives the same drawing deadline.
-    io.to(roomCode).emit("game:drawingStarted", {
-        drawerId: playerId,
-        maskedWord,
-        duration,
-        endsAt: game.turnEndsAt
-    });
+    //     if (!game) return;
 
-    return maskedWord;
-}
+    //     if (game.state === "FINISHED") {
+    //         finishGame(roomCode, game);
+    //         return;
+    //     }
+
+    //     if (game.state === "WAITING") {
+    //         // No active game timer needs to be advanced.
+    //         return;
+    //     }
+
+    //     const result = game.checkGameOver();
+
+    //     if (result?.gameOver) {
+    //         finishGame(roomCode, game, result.winner);
+    //         return;
+    //     }
+
+    //     // If the current drawer left, move to the next turn.
+    //     if (wasDrawer) {
+    //         advanceTurn(roomCode, game);
+    //     }
+    // }
 
 
 
     function handlePlayerLeave(roomCode, wasDrawer = false) {
-        const game = games.get(roomCode);
+    const game = games.get(roomCode);
 
-        if (!game) return;
+    if (!game) return;
 
-        if (game.state === "FINISHED") {
-            finishGame(roomCode, game);
-            return;
-        }
-
-        if (game.state === "WAITING") {
-            // No active game timer needs to be advanced.
-            return;
-        }
-
-        const result = game.checkGameOver();
-
-        if (result?.gameOver) {
-            finishGame(roomCode, game, result.winner);
-            return;
-        }
-
-        // If the current drawer left, move to the next turn.
-        if (wasDrawer) {
-            advanceTurn(roomCode, game);
-        }
+    if (game.state === "FINISHED") {
+        finishGame(roomCode, game);
+        return;
     }
+
+    if (game.state === "WAITING") {
+        return;
+    }
+
+    const result = game.checkGameOver();
+
+    if (result?.gameOver) {
+        finishGame(roomCode, game, result.winner);
+        return;
+    }
+
+    if (wasDrawer) {
+        advanceTurn(roomCode, game);
+    }
+}
 
     function getExistingGame(roomCode) {
         return games.get(roomCode) || null;
+    }
+
+    function emitToPlayer(game, playerId, event, data) {
+        const player = game.room.players.find(
+            p => p.getId() === playerId
+        );
+
+        if (!player?.getSocketId()) return;
+
+        io.to(player.getSocketId()).emit(event, data);
     }
 
     return {
@@ -499,18 +280,29 @@ function selectWord(roomCode, playerId, word) {
 
 
 function registerGameHandlers(io, socket, controller) {
-
     function currentGame() {
         const roomCode = socket.data.roomCode;
+        const playerId = socket.data.playerId;
 
-        if (!roomCode) {
+        if (!roomCode || !playerId || !socket.rooms.has(roomCode)) {
             throw new Error("Not in a room");
         }
 
-        return {
-            roomCode,
-            game: controller.getGame(roomCode)
-        };
+        const game = controller.getGame(roomCode);
+
+        const player = game.room.players.find(
+            p => p.getId() === playerId
+        );
+
+        if (
+            !player ||
+            !player.isConnected() ||
+            player.getSocketId() !== socket.id
+        ) {
+            throw new Error("Invalid player session");
+        }
+
+        return { roomCode, game };
     }
 
     function handleError(callback, error) {
@@ -530,7 +322,8 @@ function registerGameHandlers(io, socket, controller) {
 
             if (
                 game.room.type === "PRIVATE" &&
-                game.room.host?.getId() !== socket.id
+                // game.room.host?.getId() !== socket.id
+                game.room.host?.getId() !== socket.data.playerId
             ) {
                 throw new Error("Only the host can start the game");
             }
@@ -559,7 +352,7 @@ function registerGameHandlers(io, socket, controller) {
 
             controller.selectWord(
                 roomCode,
-                socket.id,
+                socket.data.playerId,
                 data?.word
             );
 
@@ -569,56 +362,61 @@ function registerGameHandlers(io, socket, controller) {
             handleError(callback, error);
         }
     });
-    
-socket.on("game:sync", callback => {
-    try {
-        const roomCode = socket.data.roomCode;
 
-        if (!roomCode || !socket.rooms.has(roomCode)) {
-            throw new Error("Not in a room");
-        }
+    socket.on("game:sync", callback => {
+        try {
+            const roomCode = socket.data.roomCode;
 
-        const game = controller.getExistingGame(roomCode);
+            if (!roomCode || !socket.rooms.has(roomCode)) {
+                throw new Error("Not in a room");
+            }
 
-        if (!game) {
+            const game = controller.getExistingGame(roomCode);
+
+            if (!game) {
+                callback?.({
+                    success: true,
+                    game: null
+                });
+                return;
+            }
+
+      
+            const isPlayer = game.room.players.some(
+                player =>
+                    player.getId() === socket.data.playerId &&
+                    player.getSocketId() === socket.id &&
+                    player.isConnected()
+            );
+
+            if (!isPlayer) {
+                throw new Error("Not a member of this room");
+            }
+
+            // Current game state, without the secret word
+            const snapshot = game.getPublicSnapshot();
+
+            // Only the drawer receives the word choices
+            if (
+                game.state === "WORD_SELECTION" &&
+                // game.getCurrentDrawer()?.getId() === socket.id
+                game.getCurrentDrawer()?.getId() === socket.data.playerId
+            ) {
+                snapshot.wordChoices = game.wordChoices;
+            }
+
             callback?.({
                 success: true,
-                game: null
+                game: snapshot
             });
-            return;
+
+        } catch (error) {
+            callback?.({
+                success: false,
+                error: error.message
+            });
         }
-
-        const isPlayer = game.room.players.some(
-            player => player.getId() === socket.id
-        );
-
-        if (!isPlayer) {
-            throw new Error("Not a member of this room");
-        }
-
-        // Current game state, without the secret word
-        const snapshot = game.getPublicSnapshot();
-
-        // Only the drawer receives the word choices
-        if (
-            game.state === "WORD_SELECTION" &&
-            game.getCurrentDrawer()?.getId() === socket.id
-        ) {
-            snapshot.wordChoices = game.wordChoices;
-        }
-
-        callback?.({
-            success: true,
-            game: snapshot
-        });
-
-    } catch (error) {
-        callback?.({
-            success: false,
-            error: error.message
-        });
-    }
-});
+    });
 
 
     // -------------------------
@@ -642,7 +440,8 @@ socket.on("game:sync", callback => {
             // Ordinary chat is allowed before drawing starts.
             if (game.state !== "DRAWING") {
                 io.to(roomCode).emit("chat:message", {
-                    playerId: socket.id,
+                    //playerId: socket.id,
+                    playerId: socket.data.playerId,
                     message
                 });
 
@@ -654,11 +453,12 @@ socket.on("game:sync", callback => {
                 return;
             }
 
-            const result = game.submitGuess(socket.id, message);
-
+            //const result = game.submitGuess(socket.id, message);
+            const result = game.submitGuess(socket.data.playerId, message);
             if (result.status === "CORRECT") {
                 io.to(roomCode).emit("game:correctGuess", {
-                    playerId: socket.id,
+             
+                    playerId: socket.data.playerId,
                     points: result.points
                 });
 
@@ -671,17 +471,19 @@ socket.on("game:sync", callback => {
                 result.status === "INCORRECT" ||
                 result.status === "ALREADY_GUESSED"
             ) {
-                // Do not reveal the answer in chat during a turn.
+               
                 // A player who has already guessed can still chat,
                 // but must not leak the current word.
                 if (result.status === "INCORRECT") {
                     io.to(roomCode).emit("chat:message", {
-                        playerId: socket.id,
+                        // playerId: socket.id,
+                        playerId: socket.data.playerId,
                         message
                     });
                 } else {
                     socket.emit("chat:message", {
-                        playerId: socket.id,
+                        // playerId: socket.id,
+                        playerId: socket.data.playerId,
                         message: "You already guessed correctly!"
                     });
                 }

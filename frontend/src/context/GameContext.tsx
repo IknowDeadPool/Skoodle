@@ -3,6 +3,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import { socket } from "../services/socket";
 import type { Player, RoomData } from "../types";
 import { GameContext } from "./gameContext";
+import {
+  savePlayerSession,
+  getPlayerSession,
+  clearPlayerSession,
+} from "../services/playerSession";
 
 interface ChatMessage {
   playerId?: string;
@@ -16,14 +21,14 @@ interface Winner {
 }
 
 interface GameSnapshot {
-    state: "WAITING" | "WORD_SELECTION" | "DRAWING" | "FINISHED";
-    round: number;
-    drawerId: string | null;
-    maskedWord: string | null;
-    remainingTime: number | null;
-    endsAt: number | null;
-    wordChoices?: string[];
-    players?: Player[];
+  state: "WAITING" | "WORD_SELECTION" | "DRAWING" | "FINISHED";
+  round: number;
+  drawerId: string | null;
+  maskedWord: string | null;
+  remainingTime: number | null;
+  endsAt: number | null;
+  wordChoices?: string[];
+  players?: Player[];
 }
 
 interface GameSyncResponse {
@@ -32,8 +37,23 @@ interface GameSyncResponse {
   error?: string;
 }
 
+interface ReconnectResponse {
+  success: boolean;
+  error?: string;
+  roomCode?: string;
+  playerId?: string;
+  reconnectToken?: string;
+  players?: Player[];
+  settings?: RoomData["settings"];
+  hostId?: string | null;
+  status?: RoomData["status"];
+  game?: GameSnapshot | null;
+  selectedWord?: string | null;
+}
+
 export function GameProvider({ children }: { children: ReactNode }) {
   const [room, setRoomState] = useState<RoomData | null>(null);
+  const [playerId, setPlayerId] = useState<string | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [round, setRound] = useState(0);
@@ -54,6 +74,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (nextRoom) {
       setPlayers(nextRoom.players);
     } else {
+      setPlayerId(null);
       setPlayers([]);
       setDrawerId(null);
       setRound(0);
@@ -70,6 +91,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  function applyGameSnapshot(game: GameSnapshot) {
+    setRound(game.round);
+    setDrawerId(game.drawerId);
+    setMaskedWord(game.maskedWord ?? "");
+    setIsDrawing(game.state === "DRAWING");
+    setFinished(game.state === "FINISHED");
+    setWordChoices(game.wordChoices ?? []);
+    setEndsAt(game.endsAt);
+
+    if (game.players) {
+      setPlayers(game.players);
+    }
+  }
+
   function syncGame() {
     socket.emit("game:sync", (response: GameSyncResponse) => {
       if (!response.success) {
@@ -77,25 +112,73 @@ export function GameProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const game = response.game;
+      if (!response.game) return;
 
-      if (!game) return;
-
-      setRound(game.round);
-      setDrawerId(game.drawerId);
-      setMaskedWord(game.maskedWord ?? "");
-      setIsDrawing(game.state === "DRAWING");
-      //setTimeLeft(game.remainingTime ?? 0);
-      setFinished(game.state === "FINISHED");
-      setWordChoices(game.wordChoices ?? []);
-      setSelectedWord("");
-      setEndsAt(game.endsAt);
-
-      if (game.players) {
-        setPlayers(game.players);
-      }
+      applyGameSnapshot(response.game);
     });
   }
+
+  
+function restoreSession() {
+  const session = getPlayerSession();
+
+  if (!session || !socket.connected) return;
+
+  socket.timeout(5000).emit(
+    "room:reconnect",
+    session,
+    (error: Error | null, response?: ReconnectResponse) => {
+      if (error) {
+        console.error("Reconnection timed out:", error);
+        // Keep the session for a future retry.
+        return;
+      }
+
+      if (!response?.success) {
+        console.error("Room reconnection failed:", response?.error);
+        clearPlayerSession();
+        setRoom(null);
+        return;
+      }
+
+      if (
+        !response.roomCode ||
+        !response.playerId ||
+        !response.reconnectToken ||
+        !response.players ||
+        !response.settings
+      ) {
+        console.error("Incomplete reconnect response");
+        clearPlayerSession();
+        setRoom(null);
+        return;
+      }
+
+      savePlayerSession({
+        roomCode: response.roomCode,
+        playerId: response.playerId,
+        reconnectToken: response.reconnectToken,
+      });
+
+      setPlayerId(response.playerId);
+
+      setRoom({
+        roomCode: response.roomCode,
+        players: response.players,
+        settings: response.settings,
+        hostId: response.hostId ?? null,
+        status: response.status,
+      } as RoomData);
+
+      if (response.game) {
+        applyGameSnapshot(response.game);
+      }
+
+      setSelectedWord(response.selectedWord ?? "");
+    }
+  );
+}
+
 
   useEffect(() => {
     function onPlayersUpdated(updatedPlayers: Player[]) {
@@ -103,31 +186,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
 
     function onTurnStarted(data: {
-    drawerId: string;
-    round: number;
-    endsAt: number;
-}) {
-    setDrawerId(data.drawerId);
-    setRound(data.round);
-    setSelectedWord("");
-    setWordChoices([]);
-    setMaskedWord("");
-    setIsDrawing(false);
-    setEndsAt(data.endsAt);
-}
+      drawerId: string;
+      round: number;
+      endsAt: number;
+    }) {
+      setDrawerId(data.drawerId);
+      setRound(data.round);
+      setSelectedWord("");
+      setWordChoices([]);
+      setMaskedWord("");
+      setIsDrawing(false);
+      setEndsAt(data.endsAt);
+    }
 
-function onDrawingStarted(data: {
-    drawerId: string;
-    maskedWord: string;
-    duration: number;
-    endsAt: number;
-}) {
-    setDrawerId(data.drawerId);
-    setMaskedWord(data.maskedWord);
-    setWordChoices([]);
-    setIsDrawing(true);
-    setEndsAt(data.endsAt);
-}
+    function onDrawingStarted(data: {
+      drawerId: string;
+      maskedWord: string;
+      duration: number;
+      endsAt: number;
+    }) {
+      setDrawerId(data.drawerId);
+      setMaskedWord(data.maskedWord);
+      setWordChoices([]);
+      setIsDrawing(true);
+      setEndsAt(data.endsAt);
+    }
 
     function onWordChoices(choices: string[]) {
       setWordChoices(choices);
@@ -223,50 +306,39 @@ function onDrawingStarted(data: {
   }, [room?.roomCode]);
 
   useEffect(() => {
-    function handleReconnect() {
-      if (!room?.roomCode) return;
-
-      syncGame();
+    function handleConnect() {
+      restoreSession();
     }
 
-    socket.on("connect", handleReconnect);
+    socket.on("connect", handleConnect);
+
+    if (socket.connected) {
+      restoreSession();
+    }
 
     return () => {
-      socket.off("connect", handleReconnect);
+      socket.off("connect", handleConnect);
     };
-  }, [room?.roomCode]);
-
-  // useEffect(() => {
-  //   if (round === 0 || finished || timeLeft <= 0) return;
-
-  //   const timer = setTimeout(() => {
-  //     setTimeLeft((previous) => Math.max(0, previous - 1));
-  //   }, 1000);
-
-  //   return () => clearTimeout(timer);
-  // }, [round, finished, timeLeft]);
+  }, []);
 
   useEffect(() => {
-  if (endsAt === null) {
-    setTimeLeft(0);
-    return;
-  }
+    if (endsAt === null) {
+      setTimeLeft(0);
+      return;
+    }
 
-  function updateTimer() {
-    const remaining = Math.max(
-      0,
-      Math.ceil((endsAt! - Date.now()) / 1000)
-    );
+    function updateTimer() {
+      const remaining = Math.max(0, Math.ceil((endsAt! - Date.now()) / 1000));
 
-    setTimeLeft(remaining);
-  }
+      setTimeLeft(remaining);
+    }
 
-  updateTimer();
+    updateTimer();
 
-  const interval = setInterval(updateTimer, 250);
+    const interval = setInterval(updateTimer, 250);
 
-  return () => clearInterval(interval);
-}, [endsAt]);
+    return () => clearInterval(interval);
+  }, [endsAt]);
 
   function selectWord(word: string) {
     socket.emit(
@@ -288,6 +360,7 @@ function onDrawingStarted(data: {
       {},
       (response: { success: boolean; error?: string }) => {
         if (response.success) {
+          clearPlayerSession();
           setRoom(null);
         } else {
           console.error(response.error);
@@ -295,17 +368,37 @@ function onDrawingStarted(data: {
       },
     );
   }
-  console.log("GAME PROVIDER STATE:", {
-    room: room?.roomCode,
-    round,
-    drawerId,
-  });
 
+//   function leaveRoom() {
+//   // Clear the browser session immediately.
+//   clearPlayerSession();
+
+//   // Update React immediately.
+//   setRoom(null);
+//   setPlayerId(null);
+
+//   // Notify the backend without blocking navigation.
+//   if (socket.connected) {
+//     socket.emit("room:leave");
+//   }
+// }
+  // console.log("GAME PROVIDER STATE:", {
+  //   room: room?.roomCode,
+  //   round,
+  //   drawerId,
+  // });
+
+  console.log("PROVIDER STATE:", {
+    playerId,
+    roomCode: room?.roomCode,
+  });
   return (
     <GameContext.Provider
       value={{
         room,
         setRoom,
+        playerId,
+        setPlayerId,
         players,
         drawerId,
         round,

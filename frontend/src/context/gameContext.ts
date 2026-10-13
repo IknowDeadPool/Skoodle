@@ -13,9 +13,14 @@ export interface Winner {
   score: number;
 }
 
+
 export interface GameContextType {
   room: RoomData | null;
   setRoom: (room: RoomData | null) => void;
+
+  playerId: string | null;
+  setPlayerId: (id: string | null) => void;
+
   players: Player[];
   drawerId: string | null;
   round: number;
@@ -27,7 +32,7 @@ export interface GameContextType {
   winner: Winner | null;
   finalScores: Player[];
   finished: boolean;
-  
+
   selectWord: (word: string) => void;
   leaveRoom: () => void;
   selectedWord: string;

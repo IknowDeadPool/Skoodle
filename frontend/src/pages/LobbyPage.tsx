@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { socket } from "../services/socket";
 import type { Player, RoomData } from "../types";
+import { useGameState } from "../hooks/useGameState";
 
 interface Props {
   room: RoomData;
@@ -12,6 +13,7 @@ export default function LobbyPage({ room, onLeave }: Props) {
   const [players, setPlayers] = useState<Player[]>(room.players);
   const [hostId, setHostId] = useState(room.hostId);
   const [error, setError] = useState("");
+  const { playerId } = useGameState();
 
   useEffect(() => {
     const updatePlayers = (players: Player[]) => {
@@ -77,11 +79,14 @@ function startGame() {
         </p>
       ))}
 
-      {room.hostId != null && socket.id === hostId && (
-        <button disabled={players.length < 2} onClick={startGame}>
-          Start Game
-        </button>
-      )}
+      {room.hostId != null && playerId === room.hostId && (
+    <button
+        disabled={players.length < 2}
+        onClick={startGame}
+    >
+        Start Game
+    </button>
+)}
 
       {room.hostId == null && (
         <p>Waiting for players or game to start...</p>

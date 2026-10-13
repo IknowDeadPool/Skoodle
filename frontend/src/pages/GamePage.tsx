@@ -8,6 +8,7 @@ export default function GamePage() {
   const {
     room,
     players,
+    playerId,
     drawerId,
     round,
     wordChoices,
@@ -26,7 +27,16 @@ export default function GamePage() {
   const [guess, setGuess] = useState("");
   const [error, setError] = useState("");
 
-  const isDrawer = socket.id === drawerId;
+  
+const isDrawer = playerId !== null && playerId === drawerId;
+console.log("GAME DEBUG:", {
+  playerId,
+  drawerId,
+  socketId: socket.id,
+  hostId: room?.hostId,
+  isDrawer,
+  wordChoices,
+});
 
   function sendGuess(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -93,7 +103,9 @@ export default function GamePage() {
 
       <p>
   {isDrawing ? "Drawing Time" : "Word Selection Time"}: {timeLeft}s
-</p>
+</p>  
+
+
 
       {/* Word selection */}
       {isDrawer && wordChoices.length > 0 && !isDrawing && (

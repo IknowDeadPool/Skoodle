@@ -23,4 +23,6 @@ export interface RoomData {
 export interface ServerResponse extends Partial<RoomData> {
   success: boolean;
   error?: string;
+  playerId?: string;
+  reconnectToken?: string;
 }

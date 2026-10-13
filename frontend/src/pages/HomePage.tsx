@@ -1,7 +1,8 @@
-
 import { useState } from "react";
 import { socket } from "../services/socket";
 import type { RoomData, ServerResponse } from "../types";
+import { useGameState } from "../hooks/useGameState";
+import { savePlayerSession } from "../services/playerSession";
 
 interface Props {
   onRoomJoined: (room: RoomData) => void;
@@ -12,6 +13,8 @@ export default function HomePage({ onRoomJoined }: Props) {
   const [roomCode, setRoomCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const { setPlayerId } = useGameState();
 
   function connect(): Promise<void> {
     if (socket.connected) return Promise.resolve();
@@ -51,18 +54,36 @@ export default function HomePage({ onRoomJoined }: Props) {
     try {
       await connect();
 
-      const response = await socket
+      const response = (await socket
         .timeout(5000)
-        .emitWithAck(event, payload) as ServerResponse;
+        .emitWithAck(event, payload)) as ServerResponse;
+
+      console.log("HOME RESPONSE:", {
+        event,
+        success: response.success,
+        playerId: response.playerId,
+        hostId: response.hostId,
+        roomCode: response.roomCode,
+        hasReconnectToken: Boolean(response.reconnectToken),
+      });
 
       if (
         !response.success ||
         !response.roomCode ||
         !response.players ||
-        !response.settings
+        !response.settings ||
+        !response.playerId ||
+        !response.reconnectToken
       ) {
-        throw new Error(response.error || "Unable to join room");
+        throw new Error(response.error || "Incomplete room response");
       }
+      setPlayerId(response.playerId);
+
+      savePlayerSession({
+        roomCode: response.roomCode,
+        playerId: response.playerId,
+        reconnectToken: response.reconnectToken,
+      });
 
       onRoomJoined({
         roomCode: response.roomCode,
@@ -71,11 +92,8 @@ export default function HomePage({ onRoomJoined }: Props) {
         hostId: response.hostId,
         status: response.status || "WAITING",
       });
-
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Something went wrong"
-      );
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -89,7 +107,7 @@ export default function HomePage({ onRoomJoined }: Props) {
       <input
         placeholder="Your name"
         value={playerName}
-        onChange={e => setPlayerName(e.target.value)}
+        onChange={(e) => setPlayerName(e.target.value)}
       />
 
       <div>
@@ -97,7 +115,7 @@ export default function HomePage({ onRoomJoined }: Props) {
           disabled={loading}
           onClick={() =>
             sendRequest("room:quickPlay", {
-              playerName
+              playerName,
             })
           }
         >
@@ -113,8 +131,8 @@ export default function HomePage({ onRoomJoined }: Props) {
                 rounds: 3,
                 drawTime: 80,
                 wordMode: "default",
-                customWords: []
-              }
+                customWords: [],
+              },
             })
           }
         >
@@ -126,9 +144,7 @@ export default function HomePage({ onRoomJoined }: Props) {
         <input
           placeholder="Room code"
           value={roomCode}
-          onChange={e =>
-            setRoomCode(e.target.value.toUpperCase())
-          }
+          onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
         />
 
         <button
@@ -136,7 +152,7 @@ export default function HomePage({ onRoomJoined }: Props) {
           onClick={() =>
             sendRequest("room:join", {
               roomCode,
-              playerName
+              playerName,
             })
           }
         >
