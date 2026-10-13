@@ -20,6 +20,7 @@ export default function GamePage() {
     finalScores,
     selectWord,
     leaveRoom,
+    selectedWord,
   } = useGameState();
 
   const [guess, setGuess] = useState("");
@@ -91,8 +92,8 @@ export default function GamePage() {
       </p>
 
       <p>
-        Time: {isDrawing ? `${timeLeft}s` : "Waiting for word selection"}
-      </p>
+  {isDrawing ? "Drawing Time" : "Word Selection Time"}: {timeLeft}s
+</p>
 
       {/* Word selection */}
       {isDrawer && wordChoices.length > 0 && !isDrawing && (
@@ -111,12 +112,12 @@ export default function GamePage() {
 
       {/* Word hint */}
       {isDrawing && (
-        <h3>
-          {isDrawer
-            ? "You are drawing!"
-            : `Word: ${maskedWord}`}
-        </h3>
-      )}
+  <h3>
+    {isDrawer
+      ? `Word : ${selectedWord || "Loading word..."}`
+      : `Guess the word: ${maskedWord}`}
+  </h3>
+)}
 
       <div
         style={{

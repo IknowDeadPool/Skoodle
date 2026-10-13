@@ -1,9 +1,4 @@
-
-import {
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { socket } from "../services/socket";
 import type { Player, RoomData } from "../types";
@@ -20,19 +15,20 @@ interface Winner {
   score: number;
 }
 
-
 export function GameProvider({ children }: { children: ReactNode }) {
   const [room, setRoomState] = useState<RoomData | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [round, setRound] = useState(0);
   const [wordChoices, setWordChoices] = useState<string[]>([]);
+  const [selectedWord, setSelectedWord] = useState("");
   const [maskedWord, setMaskedWord] = useState("");
   const [isDrawing, setIsDrawing] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [winner, setWinner] = useState<Winner | null>(null);
   const [finalScores, setFinalScores] = useState<Player[]>([]);
+
   const [finished, setFinished] = useState(false);
 
   function setRoom(nextRoom: RoomData | null) {
@@ -52,6 +48,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setWinner(null);
       setFinalScores([]);
       setFinished(false);
+      setSelectedWord("");
     }
   }
 
@@ -60,20 +57,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setPlayers(updatedPlayers);
     }
 
-    function onTurnStarted(data: {
-      drawerId: string;
-      round: number;
-    }) {
-      console.log("GAME TURN STARTED:", data);
+    function onTurnStarted(data: { drawerId: string; round: number }) {
       setDrawerId(data.drawerId);
       setRound(data.round);
+      setSelectedWord("");
       setWordChoices([]);
       setMaskedWord("");
       setIsDrawing(false);
-      setTimeLeft(0);
+      setTimeLeft(10);
     }
-
-    
 
     function onWordChoices(choices: string[]) {
       setWordChoices(choices);
@@ -92,29 +84,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
 
     function onChatMessage(data: ChatMessage) {
-      setMessages(previous => [...previous, data]);
+      setMessages((previous) => [...previous, data]);
     }
 
     function onCloseGuess(data: { message: string }) {
-      setMessages(previous => [
-        ...previous,
-        { message: data.message },
-      ]);
+      setMessages((previous) => [...previous, { message: data.message }]);
     }
 
-    function onCorrectGuess(data: {
-      playerId: string;
-      points: number;
-    }) {
-      setPlayers(previous =>
-        previous.map(player =>
+    function onCorrectGuess(data: { playerId: string; points: number }) {
+      setPlayers((previous) =>
+        previous.map((player) =>
           player.id === data.playerId
             ? { ...player, score: player.score + data.points }
-            : player
-        )
+            : player,
+        ),
       );
 
-      setMessages(previous => [
+      setMessages((previous) => [
         ...previous,
         { message: "A player guessed correctly!" },
       ]);
@@ -124,20 +110,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setIsDrawing(false);
       setWordChoices([]);
 
-      setMessages(previous => [
+      setMessages((previous) => [
         ...previous,
         { message: `The word was: ${data.word}` },
       ]);
     }
 
-    function onFinished(data: {
-      winner: Winner | null;
-      scores: Player[];
-    }) {
+    function onFinished(data: { winner: Winner | null; scores: Player[] }) {
       setFinished(true);
       setWinner(data.winner);
       setFinalScores(data.scores);
       setIsDrawing(false);
+    }
+
+    function onSelectedWord(data: { word: string }) {
+      setSelectedWord(data.word);
     }
 
     socket.on("room:playersUpdated", onPlayersUpdated);
@@ -149,6 +136,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     socket.on("game:correctGuess", onCorrectGuess);
     socket.on("game:turnEnded", onTurnEnded);
     socket.on("game:finished", onFinished);
+    socket.on("game:selectedWord", onSelectedWord);
 
     return () => {
       socket.off("room:playersUpdated", onPlayersUpdated);
@@ -160,28 +148,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.off("game:correctGuess", onCorrectGuess);
       socket.off("game:turnEnded", onTurnEnded);
       socket.off("game:finished", onFinished);
+      socket.off("game:selectedWord", onSelectedWord);
     };
   }, []);
 
   useEffect(() => {
-    if (!isDrawing || timeLeft <= 0) return;
+  if (round === 0 || finished || timeLeft <= 0) return;
 
-    const timer = setTimeout(() => {
-      setTimeLeft(previous => Math.max(0, previous - 1));
-    }, 1000);
+  const timer = setTimeout(() => {
+    setTimeLeft(previous => Math.max(0, previous - 1));
+  }, 1000);
 
-    return () => clearTimeout(timer);
-  }, [isDrawing, timeLeft]);
+  return () => clearTimeout(timer);
+}, [round, finished, timeLeft]);
 
   function selectWord(word: string) {
     socket.emit(
       "game:selectWord",
       { word },
       (response: { success: boolean; error?: string }) => {
-        if (!response.success) {
+        if (response.success) {
+          setSelectedWord(word);
+        } else {
           console.error(response.error);
         }
-      }
+      },
     );
   }
 
@@ -195,14 +186,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
         } else {
           console.error(response.error);
         }
-      }
+      },
     );
   }
   console.log("GAME PROVIDER STATE:", {
-  room: room?.roomCode,
-  round,
-  drawerId,
-});
+    room: room?.roomCode,
+    round,
+    drawerId,
+  });
 
   return (
     <GameContext.Provider
@@ -222,11 +213,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
         finished,
         selectWord,
         leaveRoom,
+        selectedWord,
+        setSelectedWord,
       }}
     >
       {children}
-      
     </GameContext.Provider>
   );
 }
-

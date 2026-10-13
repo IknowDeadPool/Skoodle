@@ -357,10 +357,17 @@ function createGameController(io, getGame, games) {
 
         const choices = game.generateWordChoices();
 
+        // if (drawer && game.currentWord) {
+        //     io.to(drawer.getId()).emit("game:selectedWord", {
+        //         word: game.currentWord
+        //     });
+        // }
+
         io.to(roomCode).emit("game:turnStarted", {
             drawerId: drawer.getId(),
             round: game.currentRound
         });
+
 
         // Only the drawer receives the actual word choices.
         io.to(drawer.getId()).emit("game:wordChoices", choices);
@@ -404,6 +411,31 @@ function createGameController(io, getGame, games) {
         return game;
     }
 
+    // function selectWord(roomCode, playerId, word) {
+    //     const game = getGame(roomCode);
+
+    //     const maskedWord = game.selectWord(playerId, word);
+
+    //     if (maskedWord === null) {
+    //         throw new Error("Invalid word selection");
+    //     }
+
+    //     clearGameTimer(game);
+
+    //     const duration = Number(game.room.settings.drawTime) || 80;
+
+    //     io.to(roomCode).emit("game:drawingStarted", {
+    //         drawerId: playerId,
+    //         maskedWord,
+    //         duration
+    //     });
+
+    //     scheduleTurnEnd(roomCode, game);
+
+    //     return maskedWord;
+    // }
+
+
     function selectWord(roomCode, playerId, word) {
         const game = getGame(roomCode);
 
@@ -417,6 +449,12 @@ function createGameController(io, getGame, games) {
 
         const duration = Number(game.room.settings.drawTime) || 80;
 
+        // Only the drawer receives the actual word.
+        io.to(playerId).emit("game:selectedWord", {
+            word: game.currentWord
+        });
+
+        // Everyone receives the masked word.
         io.to(roomCode).emit("game:drawingStarted", {
             drawerId: playerId,
             maskedWord,
@@ -427,6 +465,7 @@ function createGameController(io, getGame, games) {
 
         return maskedWord;
     }
+
 
     function handlePlayerLeave(roomCode, wasDrawer = false) {
         const game = games.get(roomCode);
