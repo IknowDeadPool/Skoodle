@@ -1,6 +1,6 @@
 const WordManager = require("./WordManager");
 const words = require("../data/words");
-
+const DrawingManager = require("./DrawingManager");
 class GameEngine {
     constructor(room) {
         this.room = room;
@@ -15,6 +15,12 @@ class GameEngine {
 
         this.currentRound = 0;
         this.wordManager = new WordManager(words);
+
+        this.drawing = new DrawingManager();
+
+
+        this.turnEndsAt = null;
+        this.wordSelectionEndsAt = null;
     }
 
     startGame() {
@@ -34,6 +40,8 @@ class GameEngine {
         this.currentDrawerIndex = 0;
         this.state = "WORD_SELECTION";
         this.room.status = "PLAYING";
+
+        this.drawing.resetTurn();
 
         return this.getCurrentDrawer();
     }
@@ -92,6 +100,10 @@ class GameEngine {
         this.wordChoices = [];
         this.guessedPlayers.clear();
         this.state = "WORD_SELECTION";
+        this.drawing.resetTurn();
+
+        this.turnEndsAt = null;
+        this.wordSelectionEndsAt = null;
     }
 
 
@@ -113,6 +125,51 @@ class GameEngine {
 
         return null;
     }
+
+
+
+    
+getPublicSnapshot() {
+    const drawer = this.getCurrentDrawer();
+
+    const endsAt =
+        this.state === "DRAWING"
+            ? this.turnEndsAt
+            : this.state === "WORD_SELECTION"
+                ? this.wordSelectionEndsAt
+                : null;
+
+    const remainingTime = endsAt
+        ? Math.max(
+            0,
+            Math.ceil((endsAt - Date.now()) / 1000)
+        )
+        : null;
+
+    return {
+        state: this.state,
+        round: this.currentRound,
+        drawerId: drawer?.getId() ?? null,
+
+        maskedWord:
+            this.state === "DRAWING" && this.currentWord
+                ? this.wordManager.maskWord(this.currentWord)
+                : null,
+
+        endsAt,
+        remainingTime,
+
+        players: this.room.players.map(player => ({
+            id: player.getId(),
+            name: player.getName(),
+            score: player.getScore()
+        })),
+
+        drawing: this.drawing.snapshot()
+    };
+}
+
+
 
 
     generateWordChoices() {

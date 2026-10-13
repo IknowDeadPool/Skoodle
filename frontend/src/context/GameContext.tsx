@@ -15,6 +15,23 @@ interface Winner {
   score: number;
 }
 
+interface GameSnapshot {
+    state: "WAITING" | "WORD_SELECTION" | "DRAWING" | "FINISHED";
+    round: number;
+    drawerId: string | null;
+    maskedWord: string | null;
+    remainingTime: number | null;
+    endsAt: number | null;
+    wordChoices?: string[];
+    players?: Player[];
+}
+
+interface GameSyncResponse {
+  success: boolean;
+  game?: GameSnapshot | null;
+  error?: string;
+}
+
 export function GameProvider({ children }: { children: ReactNode }) {
   const [room, setRoomState] = useState<RoomData | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -28,7 +45,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [winner, setWinner] = useState<Winner | null>(null);
   const [finalScores, setFinalScores] = useState<Player[]>([]);
-
+  const [endsAt, setEndsAt] = useState<number | null>(null);
   const [finished, setFinished] = useState(false);
 
   function setRoom(nextRoom: RoomData | null) {
@@ -49,7 +66,35 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setFinalScores([]);
       setFinished(false);
       setSelectedWord("");
+      setEndsAt(null);
     }
+  }
+
+  function syncGame() {
+    socket.emit("game:sync", (response: GameSyncResponse) => {
+      if (!response.success) {
+        console.error("Game sync failed:", response.error);
+        return;
+      }
+
+      const game = response.game;
+
+      if (!game) return;
+
+      setRound(game.round);
+      setDrawerId(game.drawerId);
+      setMaskedWord(game.maskedWord ?? "");
+      setIsDrawing(game.state === "DRAWING");
+      //setTimeLeft(game.remainingTime ?? 0);
+      setFinished(game.state === "FINISHED");
+      setWordChoices(game.wordChoices ?? []);
+      setSelectedWord("");
+      setEndsAt(game.endsAt);
+
+      if (game.players) {
+        setPlayers(game.players);
+      }
+    });
   }
 
   useEffect(() => {
@@ -57,31 +102,48 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setPlayers(updatedPlayers);
     }
 
-    function onTurnStarted(data: { drawerId: string; round: number }) {
-      setDrawerId(data.drawerId);
-      setRound(data.round);
-      setSelectedWord("");
-      setWordChoices([]);
-      setMaskedWord("");
-      setIsDrawing(false);
-      setTimeLeft(10);
-    }
+    function onTurnStarted(data: {
+    drawerId: string;
+    round: number;
+    endsAt: number;
+}) {
+    setDrawerId(data.drawerId);
+    setRound(data.round);
+    setSelectedWord("");
+    setWordChoices([]);
+    setMaskedWord("");
+    setIsDrawing(false);
+    setEndsAt(data.endsAt);
+}
+
+function onDrawingStarted(data: {
+    drawerId: string;
+    maskedWord: string;
+    duration: number;
+    endsAt: number;
+}) {
+    setDrawerId(data.drawerId);
+    setMaskedWord(data.maskedWord);
+    setWordChoices([]);
+    setIsDrawing(true);
+    setEndsAt(data.endsAt);
+}
 
     function onWordChoices(choices: string[]) {
       setWordChoices(choices);
     }
 
-    function onDrawingStarted(data: {
-      drawerId: string;
-      maskedWord: string;
-      duration: number;
-    }) {
-      setDrawerId(data.drawerId);
-      setMaskedWord(data.maskedWord);
-      setWordChoices([]);
-      setIsDrawing(true);
-      setTimeLeft(data.duration);
-    }
+    // function onDrawingStarted(data: {
+    //   drawerId: string;
+    //   maskedWord: string;
+    //   duration: number;
+    // }) {
+    //   setDrawerId(data.drawerId);
+    //   setMaskedWord(data.maskedWord);
+    //   setWordChoices([]);
+    //   setIsDrawing(true);
+    //   setTimeLeft(data.duration);
+    // }
 
     function onChatMessage(data: ChatMessage) {
       setMessages((previous) => [...previous, data]);
@@ -109,6 +171,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     function onTurnEnded(data: { word: string }) {
       setIsDrawing(false);
       setWordChoices([]);
+      setEndsAt(null);
 
       setMessages((previous) => [
         ...previous,
@@ -121,6 +184,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setWinner(data.winner);
       setFinalScores(data.scores);
       setIsDrawing(false);
+      setEndsAt(null);
     }
 
     function onSelectedWord(data: { word: string }) {
@@ -153,14 +217,56 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-  if (round === 0 || finished || timeLeft <= 0) return;
+    if (!room?.roomCode || !socket.connected) return;
 
-  const timer = setTimeout(() => {
-    setTimeLeft(previous => Math.max(0, previous - 1));
-  }, 1000);
+    syncGame();
+  }, [room?.roomCode]);
 
-  return () => clearTimeout(timer);
-}, [round, finished, timeLeft]);
+  useEffect(() => {
+    function handleReconnect() {
+      if (!room?.roomCode) return;
+
+      syncGame();
+    }
+
+    socket.on("connect", handleReconnect);
+
+    return () => {
+      socket.off("connect", handleReconnect);
+    };
+  }, [room?.roomCode]);
+
+  // useEffect(() => {
+  //   if (round === 0 || finished || timeLeft <= 0) return;
+
+  //   const timer = setTimeout(() => {
+  //     setTimeLeft((previous) => Math.max(0, previous - 1));
+  //   }, 1000);
+
+  //   return () => clearTimeout(timer);
+  // }, [round, finished, timeLeft]);
+
+  useEffect(() => {
+  if (endsAt === null) {
+    setTimeLeft(0);
+    return;
+  }
+
+  function updateTimer() {
+    const remaining = Math.max(
+      0,
+      Math.ceil((endsAt! - Date.now()) / 1000)
+    );
+
+    setTimeLeft(remaining);
+  }
+
+  updateTimer();
+
+  const interval = setInterval(updateTimer, 250);
+
+  return () => clearInterval(interval);
+}, [endsAt]);
 
   function selectWord(word: string) {
     socket.emit(

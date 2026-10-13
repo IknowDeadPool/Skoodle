@@ -257,12 +257,17 @@
 
 function createGameController(io, getGame, games) {
 
-    function clearGameTimer(game) {
-        if (game.timer) {
-            clearTimeout(game.timer);
-            game.timer = null;
-        }
+    
+function clearGameTimer(game) {
+    if (game.timer) {
+        clearTimeout(game.timer);
     }
+
+    game.timer = null;
+    game.turnEndsAt = null;
+    game.wordSelectionEndsAt = null;
+}
+
 
     function finishGame(roomCode, game, forcedWinner = null) {
         if (games.get(roomCode) !== game) return;
@@ -336,6 +341,8 @@ function createGameController(io, getGame, games) {
         clearGameTimer(game);
 
         const duration = Number(game.room.settings.drawTime) || 80;
+        game.turnEndsAt = Date.now() + duration * 1000;
+        game.wordSelectionEndsAt = null;
 
         game.timer = setTimeout(() => {
             if (games.get(roomCode) !== game) return;
@@ -357,20 +364,22 @@ function createGameController(io, getGame, games) {
 
         const choices = game.generateWordChoices();
 
-        // if (drawer && game.currentWord) {
-        //     io.to(drawer.getId()).emit("game:selectedWord", {
-        //         word: game.currentWord
-        //     });
-        // }
+        game.wordSelectionEndsAt = Date.now() + 10000;
+
 
         io.to(roomCode).emit("game:turnStarted", {
             drawerId: drawer.getId(),
-            round: game.currentRound
+            round: game.currentRound,
+            endsAt: game.wordSelectionEndsAt
         });
 
 
+        io.to(roomCode).emit("draw:state", game.drawing.snapshot());
+
         // Only the drawer receives the actual word choices.
         io.to(drawer.getId()).emit("game:wordChoices", choices);
+
+        
 
         // Automatically choose a word if the drawer does not
         // select one within 10 seconds.
@@ -411,60 +420,38 @@ function createGameController(io, getGame, games) {
         return game;
     }
 
-    // function selectWord(roomCode, playerId, word) {
-    //     const game = getGame(roomCode);
 
-    //     const maskedWord = game.selectWord(playerId, word);
+    
+function selectWord(roomCode, playerId, word) {
+    const game = getGame(roomCode);
 
-    //     if (maskedWord === null) {
-    //         throw new Error("Invalid word selection");
-    //     }
+    const maskedWord = game.selectWord(playerId, word);
 
-    //     clearGameTimer(game);
-
-    //     const duration = Number(game.room.settings.drawTime) || 80;
-
-    //     io.to(roomCode).emit("game:drawingStarted", {
-    //         drawerId: playerId,
-    //         maskedWord,
-    //         duration
-    //     });
-
-    //     scheduleTurnEnd(roomCode, game);
-
-    //     return maskedWord;
-    // }
-
-
-    function selectWord(roomCode, playerId, word) {
-        const game = getGame(roomCode);
-
-        const maskedWord = game.selectWord(playerId, word);
-
-        if (maskedWord === null) {
-            throw new Error("Invalid word selection");
-        }
-
-        clearGameTimer(game);
-
-        const duration = Number(game.room.settings.drawTime) || 80;
-
-        // Only the drawer receives the actual word.
-        io.to(playerId).emit("game:selectedWord", {
-            word: game.currentWord
-        });
-
-        // Everyone receives the masked word.
-        io.to(roomCode).emit("game:drawingStarted", {
-            drawerId: playerId,
-            maskedWord,
-            duration
-        });
-
-        scheduleTurnEnd(roomCode, game);
-
-        return maskedWord;
+    if (maskedWord === null) {
+        throw new Error("Invalid word selection");
     }
+
+    const duration = Number(game.room.settings.drawTime) || 80;
+
+    // Establish the server deadline before notifying players.
+    scheduleTurnEnd(roomCode, game);
+
+    // Only the drawer receives the actual word.
+    io.to(playerId).emit("game:selectedWord", {
+        word: game.currentWord
+    });
+
+    // Everyone receives the same drawing deadline.
+    io.to(roomCode).emit("game:drawingStarted", {
+        drawerId: playerId,
+        maskedWord,
+        duration,
+        endsAt: game.turnEndsAt
+    });
+
+    return maskedWord;
+}
+
 
 
     function handlePlayerLeave(roomCode, wasDrawer = false) {
@@ -582,6 +569,57 @@ function registerGameHandlers(io, socket, controller) {
             handleError(callback, error);
         }
     });
+    
+socket.on("game:sync", callback => {
+    try {
+        const roomCode = socket.data.roomCode;
+
+        if (!roomCode || !socket.rooms.has(roomCode)) {
+            throw new Error("Not in a room");
+        }
+
+        const game = controller.getExistingGame(roomCode);
+
+        if (!game) {
+            callback?.({
+                success: true,
+                game: null
+            });
+            return;
+        }
+
+        const isPlayer = game.room.players.some(
+            player => player.getId() === socket.id
+        );
+
+        if (!isPlayer) {
+            throw new Error("Not a member of this room");
+        }
+
+        // Current game state, without the secret word
+        const snapshot = game.getPublicSnapshot();
+
+        // Only the drawer receives the word choices
+        if (
+            game.state === "WORD_SELECTION" &&
+            game.getCurrentDrawer()?.getId() === socket.id
+        ) {
+            snapshot.wordChoices = game.wordChoices;
+        }
+
+        callback?.({
+            success: true,
+            game: snapshot
+        });
+
+    } catch (error) {
+        callback?.({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 
     // -------------------------
     // CHAT / GUESSING
@@ -659,54 +697,6 @@ function registerGameHandlers(io, socket, controller) {
         }
     });
 
-    // -------------------------
-    // DRAW STROKES
-    // -------------------------
-
-    // socket.on("draw:stroke", data => {
-    //     try {
-    //         const { roomCode, game } = currentGame();
-
-    //         if (game.state !== "DRAWING") return;
-
-    //         if (
-    //             game.getCurrentDrawer()?.getId() !== socket.id
-    //         ) return;
-
-    //         if (
-    //             !data ||
-    //             typeof data !== "object" ||
-    //             Array.isArray(data)
-    //         ) return;
-
-    //         // Relay strokes to everyone except the drawer.
-    //         socket.to(roomCode).emit("draw:stroke", data);
-
-    //     } catch (error) {
-    //         console.error("Draw stroke error:", error.message);
-    //     }
-    // });
-
-    // // -------------------------
-    // // CLEAR CANVAS
-    // // -------------------------
-
-    // socket.on("draw:clear", () => {
-    //     try {
-    //         const { roomCode, game } = currentGame();
-
-    //         if (game.state !== "DRAWING") return;
-
-    //         if (
-    //             game.getCurrentDrawer()?.getId() !== socket.id
-    //         ) return;
-
-    //         io.to(roomCode).emit("draw:clear");
-
-    //     } catch (error) {
-    //         console.error("Clear canvas error:", error.message);
-    //     }
-    // });
 }
 
 module.exports = {
