@@ -1,6 +1,8 @@
 const WordManager = require("./WordManager");
 const words = require("../data/words");
 const DrawingManager = require("./DrawingManager");
+const ScoringStrategy = require("../game/strategies/ScoringStrategy");
+
 class GameEngine {
     constructor(room) {
         this.room = room;
@@ -107,6 +109,17 @@ class GameEngine {
     }
 
 
+    getRemainingTime() {
+    if (this.state !== "DRAWING" || !this.turnEndsAt) {
+        return 0;
+    }
+
+    return Math.max(
+        0,
+        Math.ceil((this.turnEndsAt - Date.now()) / 1000)
+    );
+}
+
     checkGameOver() {
         if (this.state === "WAITING" || this.state === "FINISHED") {
             return null;
@@ -198,6 +211,8 @@ class GameEngine {
 
         this.state = "DRAWING";
 
+    //     this.turnEndsAt =
+    // Date.now() + this.room.settings.drawTime * 1000;
         return this.wordManager.maskWord(selectedWord);
     }
 
@@ -230,17 +245,26 @@ class GameEngine {
         }
 
         if (guess === answer) {
-            const points = 100;
+    const timeLeft = this.getRemainingTime();
 
-            player.addScore(points);
-            this.guessedPlayers.add(playerId);
+    if (timeLeft <= 0) {
+        return { status: "INVALID" };
+    }
 
-            return {
-                status: "CORRECT",
-                playerId,
-                points
-            };
-        }
+    const points = ScoringStrategy.calculateGuessPoints(
+        timeLeft,
+        this.room.settings.drawTime
+    );
+
+    player.addScore(points);
+    this.guessedPlayers.add(playerId);
+
+    return {
+        status: "CORRECT",
+        playerId,
+        points
+    };
+}
 
         const distance = this.levenshtein(guess, answer);
 

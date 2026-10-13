@@ -98,17 +98,7 @@ class RoomService {
         return room;
     }
 
-    // getAvailableRooms() {
-    //     const maxPlayers = Number(process.env.PLAYER_LIMIT || 8);
-
-    //     return Array.from(this.Rooms.values())
-    //         .filter(room =>
-    //             room.type === "PUBLIC" &&
-    //             ["WAITING", "PLAYING"].includes(room.status) &&
-    //             room.players.length < maxPlayers
-    //         )
-    //         .sort((a, b) => b.players.length - a.players.length);
-    // }
+   
 
 getAvailableRooms() {
   return [...this.Rooms.values()]

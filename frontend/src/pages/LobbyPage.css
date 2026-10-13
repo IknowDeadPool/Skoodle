@@ -1,0 +1,241 @@
+
+.sk-lobby {
+  min-height: 100vh;
+  padding: 32px 20px;
+  background: #f3f4fa;
+  color: #172033;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.sk-lobby * {
+  box-sizing: border-box;
+}
+
+.sk-lobby-container {
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.sk-lobby-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.sk-lobby-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sk-lobby-logo {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: #7c3aed;
+  color: white;
+  font-size: 24px;
+}
+
+.sk-lobby-brand h1 {
+  margin: 0;
+  font-size: 27px;
+  letter-spacing: -0.8px;
+}
+
+.sk-lobby-subtitle {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.sk-lobby-card {
+  padding: 24px;
+  margin-bottom: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 8px 26px rgba(15, 23, 42, 0.04);
+}
+
+.sk-lobby-card h2 {
+  margin: 0 0 8px;
+  font-size: 21px;
+}
+
+.sk-lobby-card-description {
+  margin: 0 0 18px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.sk-lobby-invite {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #ddd6fe;
+  border-radius: 12px;
+  background: #f5f3ff;
+}
+
+.sk-lobby-invite-link {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6d28d9;
+  font-size: 13px;
+}
+
+.sk-lobby-btn {
+  padding: 11px 17px;
+  border: 0;
+  border-radius: 11px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.sk-lobby-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.sk-lobby-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sk-lobby-btn-primary {
+  background: #7c3aed;
+  color: white;
+}
+
+.sk-lobby-btn-primary:hover:not(:disabled) {
+  background: #6d28d9;
+}
+
+.sk-lobby-btn-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.sk-lobby-btn-danger:hover:not(:disabled) {
+  background: #fecaca;
+}
+
+.sk-lobby-btn-outline {
+  background: white;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+.sk-lobby-room-code {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  font-size: 12px;
+  color: #475569;
+}
+
+.sk-lobby-players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.sk-lobby-player {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+  background: #f8fafc;
+}
+
+.sk-lobby-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: #ede9fe;
+  color: #6d28d9;
+  font-weight: 800;
+}
+
+.sk-lobby-player-name {
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.sk-lobby-player-role {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #7c3aed;
+}
+
+.sk-lobby-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.sk-lobby-waiting {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.sk-lobby-error {
+  margin-top: 14px;
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.sk-lobby-success {
+  margin-top: 10px;
+  color: #15803d;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .sk-lobby {
+    padding: 16px 12px;
+  }
+
+  .sk-lobby-card {
+    padding: 17px;
+  }
+
+  .sk-lobby-invite {
+    flex-wrap: wrap;
+  }
+
+  .sk-lobby-invite-link {
+    flex-basis: 100%;
+  }
+
+  .sk-lobby-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sk-lobby-actions button {
+    width: 100%;
+  }
+}

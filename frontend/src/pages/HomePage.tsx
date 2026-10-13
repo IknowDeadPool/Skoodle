@@ -3,7 +3,7 @@ import { socket } from "../services/socket";
 import type { RoomData, ServerResponse } from "../types";
 import { useGameState } from "../hooks/useGameState";
 import { savePlayerSession } from "../services/playerSession";
-
+import "./HomePage.css";
 interface Props {
   onRoomJoined: (room: RoomData) => void;
 }
@@ -99,69 +99,117 @@ export default function HomePage({ onRoomJoined }: Props) {
     }
   }
 
-  return (
-    <div>
-      <h1>Skoodle</h1>
-      <p>Draw and guess with friends</p>
-
-      <input
-        placeholder="Your name"
-        value={playerName}
-        onChange={(e) => setPlayerName(e.target.value)}
-      />
-
-      <div>
-        <button
-          disabled={loading}
-          onClick={() =>
-            sendRequest("room:quickPlay", {
-              playerName,
-            })
-          }
-        >
-          Quick Play
-        </button>
-
-        <button
-          disabled={loading}
-          onClick={() =>
-            sendRequest("room:create", {
-              playerName,
-              settings: {
-                rounds: 3,
-                drawTime: 80,
-                wordMode: "default",
-                customWords: [],
-              },
-            })
-          }
-        >
-          Create Private Room
-        </button>
+  
+return (
+  <main className="sk-home">
+    <header className="sk-home-header">
+      <div className="sk-home-brand">
+        <div className="sk-home-logo">✏️</div>
+        <h1>Skoodle</h1>
       </div>
 
-      <div>
+      <div className="sk-home-tag">
+        🎨 Draw • Guess • Win
+      </div>
+    </header>
+
+    <div className="sk-home-main">
+    
+
+      <div className="sk-home-card">
+        <label
+          className="sk-home-label"
+          htmlFor="sk-player-name"
+        >
+          What should we call you?
+        </label>
+
         <input
-          placeholder="Room code"
-          value={roomCode}
-          onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+          id="sk-player-name"
+          className="sk-home-input"
+          placeholder="Enter your player name..."
+          value={playerName}
+          maxLength={24}
+          onChange={e => setPlayerName(e.target.value)}
         />
 
-        <button
-          disabled={loading || !roomCode.trim()}
-          onClick={() =>
-            sendRequest("room:join", {
-              roomCode,
-              playerName,
-            })
-          }
-        >
-          Join Room
-        </button>
+        <div className="sk-home-actions">
+          <button
+            className="sk-home-btn sk-home-btn-primary"
+            disabled={loading}
+            onClick={() =>
+              sendRequest("room:quickPlay", {
+                playerName
+              })
+            }
+          >
+            ⚡ Quick Play
+          </button>
+
+          <button
+            className="sk-home-btn sk-home-btn-secondary"
+            disabled={loading}
+            onClick={() =>
+              sendRequest("room:create", {
+                playerName,
+                settings: {
+                  rounds: 3,
+                  drawTime: 80,
+                  wordMode: "default",
+                  customWords: []
+                }
+              })
+            }
+          >
+            👥 Create Private Room
+          </button>
+        </div>
+
+        <div className="sk-home-divider">
+          OR JOIN A FRIEND
+        </div>
+
+        <div className="sk-home-join">
+          <input
+            className="sk-home-input"
+            placeholder="Room code"
+            aria-label="Room code"
+            value={roomCode}
+            onChange={e =>
+              setRoomCode(e.target.value.toUpperCase())
+            }
+          />
+
+          <button
+            className="sk-home-btn sk-home-btn-dark"
+            disabled={loading || !roomCode.trim()}
+            onClick={() =>
+              sendRequest("room:join", {
+                roomCode: roomCode.trim(),
+                playerName
+              })
+            }
+          >
+            Join →
+          </button>
+        </div>
+
+        {loading && (
+          <p className="sk-home-loading">
+            Connecting to Skoodle...
+          </p>
+        )}
+
+        {error && (
+          <div className="sk-home-error" role="alert">
+            {error}
+          </div>
+        )}
       </div>
 
-      {loading && <p>Connecting...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+  
     </div>
-  );
+  </main>
+);
+
 }

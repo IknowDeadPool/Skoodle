@@ -8,4 +8,4 @@ function generateServerRandomName() {
 }
 
 
-module.exports = generateServerRandomName();
+module.exports = {generateServerRandomName};

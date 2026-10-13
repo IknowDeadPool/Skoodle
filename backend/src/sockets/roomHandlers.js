@@ -27,6 +27,7 @@ function registerRoomHandlers(
                     : generateServerRandomName();
 
 
+
             // const player = new Player(socket.id, name);
             // player.connect(socket.id);
             const player = new Player(crypto.randomUUID(), name);
@@ -57,7 +58,8 @@ function registerRoomHandlers(
                 reconnectToken,
                 players: room.players,
                 settings: room.settings,
-                hostId: room.host?.id
+                hostId: room.host?.id ?? null,
+                status: room.status
             });
 
         } catch (error) {
@@ -69,248 +71,89 @@ function registerRoomHandlers(
     });
 
 
-    // -------------------------
-    // QUICK PLAY - PUBLIC ROOM
-    // -------------------------
 
-    // socket.on("room:quickPlay", (data, callback) => {
-    //     try {
-    //         if (socket.data.roomCode) {
-    //             throw new Error("Player is already in a room");
-    //         }
 
-    //         const playerName = data?.playerName;
 
-    //         const name =
-    //             typeof playerName === "string" && playerName.trim()
-    //                 ? playerName.trim()
-    //                 : generateServerRandomName();
 
-    //         // const player = new Player(socket.id, name);
-    //         // player.connect(socket.id);
 
-    //         const player = new Player(crypto.randomUUID(), name);
+    socket.on("room:quickPlay", (data, callback) => {
+        try {
+            if (socket.data.roomCode) {
+                return callback?.({
+                    success: false,
+                    error: "Player is already in a room"
+                });
+            }
 
-            
+            const playerName = data?.playerName;
 
-    //         const room = matchmakingService.findOrCreateRoom(player);
+            const name =
+                typeof playerName === "string" && playerName.trim()
+                    ? playerName.trim()
+                    : generateServerRandomName();
 
-    //         const roomCode = room.getRoomCode();
+            // Every new Quick Play join gets a new identity.
+            const player = new Player(crypto.randomUUID(), name);
 
-    //         const reconnectToken = roomService.createSession(
-    //             roomCode,
-    //             player,
-    //             socket.id
-    //         );
+            // Reuse an available public room or create a new one.
+            // This service must add the player to the chosen room.
+            const room = matchmakingService.findOrCreateRoom(player);
 
-    //         socket.join(roomCode);
+            const roomCode = room.getRoomCode();
 
-    //         socket.data.roomCode = roomCode;
-    //         socket.data.playerId = player.id;
+            // Verify matchmaking added this player.
+            if (!room.players.some(p => p.getId() === player.getId())) {
+                throw new Error("Matchmaking did not add player to room");
+            }
 
-    //         io.to(roomCode).emit(
-    //             "room:playersUpdated",
-    //             room.players
-    //         );
+            // Create a reconnect session for this specific player.
+            const reconnectToken = roomService.createSession(
+                roomCode,
+                player,
+                socket.id
+            );
 
-    //         callback?.({
-    //             success: true,
-    //             roomCode,
-    //             playerId: player.getId(),
-    //             reconnectToken,
-    //             players: room.players,
-    //             settings: room.settings,
-    //             hostId: room.host?.id ?? null,
-    //             status: room.status
-    //         });
+            socket.join(roomCode);
 
-    //         // Public games start when the second player joins.
-    //         if (
-    //             room.status === "WAITING" &&
-    //             room.players.length >= 2
-    //         ) {
-    //             gameController.startGame(roomCode);
-    //         }
+            socket.data.roomCode = roomCode;
+            socket.data.playerId = player.getId();
 
-    //     } catch (error) {
-    //         callback?.({
-    //             success: false,
-    //             error: error.message
-    //         });
-    //     }
-    // });
+            callback?.({
+                success: true,
+                roomCode,
+                playerId: player.getId(),
+                reconnectToken,
+                players: room.players,
+                settings: room.settings,
+                hostId: room.host?.id ?? null,
+                status: room.status
+            });
+
+            io.to(roomCode).emit(
+                "room:playersUpdated",
+                room.players
+            );
+
+            // Public games begin when two players are present.
+            if (
+                room.status === "WAITING" &&
+                room.players.length >= 2
+            ) {
+                gameController.startGame(roomCode);
+            }
+
+        } catch (error) {
+            console.error("Quick Play error:", error);
+
+            callback?.({
+                success: false,
+                error: error.message || "Unable to join Quick Play"
+            });
+        }
+    });
 
 
     
-
-
-socket.on("room:quickPlay", (data, callback) => {
-    try {
-        if (socket.data.roomCode) {
-            return callback?.({
-                success: false,
-                error: "Player is already in a room"
-            });
-        }
-
-        const playerName = data?.playerName;
-
-        const name =
-            typeof playerName === "string" && playerName.trim()
-                ? playerName.trim()
-                : generateServerRandomName();
-
-        // Every new Quick Play join gets a new identity.
-        const player = new Player(crypto.randomUUID(), name);
-
-        // Reuse an available public room or create a new one.
-        // This service must add the player to the chosen room.
-        const room = matchmakingService.findOrCreateRoom(player);
-
-        const roomCode = room.getRoomCode();
-
-        // Verify matchmaking added this player.
-        if (!room.players.some(p => p.getId() === player.getId())) {
-            throw new Error("Matchmaking did not add player to room");
-        }
-
-        // Create a reconnect session for this specific player.
-        const reconnectToken = roomService.createSession(
-            roomCode,
-            player,
-            socket.id
-        );
-
-        socket.join(roomCode);
-
-        socket.data.roomCode = roomCode;
-        socket.data.playerId = player.getId();
-
-        callback?.({
-            success: true,
-            roomCode,
-            playerId: player.getId(),
-            reconnectToken,
-            players: room.players,
-            settings: room.settings,
-            hostId: room.host?.id ?? null,
-            status: room.status
-        });
-
-        io.to(roomCode).emit(
-            "room:playersUpdated",
-            room.players
-        );
-
-        // Public games begin when two players are present.
-        if (
-            room.status === "WAITING" &&
-            room.players.length >= 2
-        ) {
-            gameController.startGame(roomCode);
-        }
-
-    } catch (error) {
-        console.error("Quick Play error:", error);
-
-        callback?.({
-            success: false,
-            error: error.message || "Unable to join Quick Play"
-        });
-    }
-});
-
-
-// socket.on("room:quickPlay", (data, callback) => {
-//   try {
-//     const playerName = data?.playerName?.trim();
-
-//     if (!playerName) {
-//       return callback?.({
-//         success: false,
-//         error: "Player name is required",
-//       });
-//     }
-
-//     // Prevent an already-joined socket from entering another room.
-//     if (socket.data.roomCode) {
-//       return callback?.({
-//         success: false,
-//         error: "Leave your current room before joining another.",
-//       });
-//     }
-
-//     // Generate a unique player identity.
-//     const player = new Player(
-//       crypto.randomUUID(),
-//       playerName
-//     );
-
-//     // Find an available public room.
-//     const availableRooms = roomService.getAvailableRooms();
-
-//     let room = availableRooms[0];
-
-//     // Create a room only if no suitable room exists.
-//     if (!room) {
-//       room = roomService.createRoom("PUBLIC", null);
-//     }
-
-//     const roomCode = room.getRoomCode();
-
-//     // Always add the player, including when the room is new.
-//     roomService.joinRoom(roomCode, player);
-
-//     // Create the secure reconnect session.
-//     const reconnectToken = roomService.createSession(
-//       roomCode,
-//       player,
-//       socket.id
-//     );
-
-//     // Join the Socket.IO room.
-//     socket.join(roomCode);
-
-//     // Associate this connection with the permanent player UUID.
-//     socket.data.roomCode = roomCode;
-//     socket.data.playerId = player.getId();
-
-//     // Send the complete room/session information to the client.
-//     callback?.({
-//       success: true,
-//       roomCode,
-//       playerId: player.getId(),
-//       reconnectToken,
-//       players: room.players,
-//       settings: room.settings,
-//       hostId: null,
-//       status: room.status,
-//     });
-
-//     // Notify everyone in the room.
-//     io.to(roomCode).emit("room:playersUpdated", {
-//       players: room.players,
-//       hostId: null,
-//     });
-
-//     console.log("QUICK PLAY:", {
-//       roomCode,
-//       playerId: player.getId(),
-//       playerName,
-//       playerCount: room.players.length,
-//       status: room.status,
-//     });
-
-//   } catch (error) {
-//     console.error("Quick Play error:", error);
-
-//     callback?.({
-//       success: false,
-//       error: error.message || "Unable to join Quick Play",
-//     });
-//   }
-// });
-
 
     // -------------------------
     // JOIN PRIVATE ROOM
@@ -476,102 +319,61 @@ socket.on("room:quickPlay", (data, callback) => {
     });
 
 
+
     
-// function expireDisconnectedPlayer(roomCode, playerId) {
-//     let room;
-
-//     try {
-//         room = roomService.getRoom(roomCode);
-//     } catch {
-//         roomService.deleteSession(playerId);
-//         return;
-//     }
-
-//     const player = room.players.find(
-//         p => p.getId() === playerId
-//     );
-
-//     if (!player || player.isConnected()) return;
-
-//     const game = gameController.getExistingGame(roomCode);
-
-//     const wasDrawer =
-//         game?.getCurrentDrawer()?.getId() === playerId;
-
-//     roomService.removePlayer(roomCode, playerId);
-
-//     gameController.handlePlayerLeave(roomCode, wasDrawer);
-
-//     try {
-//         room = roomService.getRoom(roomCode);
-//     } catch {
-//         return;
-//     }
-
-//     io.to(roomCode).emit(
-//         "room:playersUpdated",
-//         room.players
-//     );
-
-//     io.to(roomCode).emit("room:hostUpdated", {
-//         hostId: room.host?.id ?? null
-//     });
-// }
 
 
+    function expireDisconnectedPlayer(roomCode, playerId) {
+        let room;
 
+        try {
+            room = roomService.getRoom(roomCode);
+        } catch {
+            roomService.deleteSession(playerId);
+            return;
+        }
 
-function expireDisconnectedPlayer(roomCode, playerId) {
-    let room;
+        const player = room.players.find(
+            p => p.getId() === playerId
+        );
 
-    try {
-        room = roomService.getRoom(roomCode);
-    } catch {
-        roomService.deleteSession(playerId);
-        return;
+        // Player already left or successfully reconnected.
+        if (!player) {
+            roomService.deleteSession(playerId);
+            return;
+        }
+
+        if (player.isConnected()) return;
+
+        const game = gameController.getExistingGame(roomCode);
+
+        // Determine drawer identity BEFORE removing the player.
+        const wasDrawer =
+            game?.getCurrentDrawer()?.getId() === playerId;
+
+        // Remove the player exactly once.
+        const updatedRoom = roomService.removePlayer(
+            roomCode,
+            playerId
+        );
+
+        // Advance the turn if the departing player was drawing.
+        gameController.handlePlayerLeave(roomCode, wasDrawer);
+
+        // Room is empty and has been deleted.
+        if (!updatedRoom) {
+            return;
+        }
+
+        io.to(roomCode).emit(
+            "room:playersUpdated",
+            updatedRoom.players
+        );
+
+        io.to(roomCode).emit("room:hostUpdated", {
+            hostId: updatedRoom.host?.id ?? null
+        });
     }
-
-    const player = room.players.find(
-        p => p.getId() === playerId
-    );
-
-    // Player already left or successfully reconnected.
-    if (!player) {
-        roomService.deleteSession(playerId);
-        return;
-    }
-
-    if (player.isConnected()) return;
-
-    const game = gameController.getExistingGame(roomCode);
-
-    // Determine drawer identity BEFORE removing the player.
-    const wasDrawer =
-        game?.getCurrentDrawer()?.getId() === playerId;
-
-    // Remove the player exactly once.
-    const updatedRoom = roomService.removePlayer(
-        roomCode,
-        playerId
-    );
-
-    // Advance the turn if the departing player was drawing.
-    gameController.handlePlayerLeave(roomCode, wasDrawer);
-
-    // Room is empty and has been deleted.
-    if (!updatedRoom) {
-        return;
-    }
-
-    io.to(roomCode).emit(
-        "room:playersUpdated",
-        updatedRoom.players
-    );
-
-    io.to(roomCode).emit("room:hostUpdated", {
-        hostId: updatedRoom.host?.id ?? null
-    });
-}
 
 
 
@@ -658,36 +460,36 @@ function expireDisconnectedPlayer(roomCode, playerId) {
     // DISCONNECT
     // -------------------------
 
-    
-socket.on("disconnect", () => {
-    try {
-        const roomCode = socket.data.roomCode;
-        const playerId = socket.data.playerId;
 
-        if (!roomCode || !playerId) return;
+    socket.on("disconnect", () => {
+        try {
+            const roomCode = socket.data.roomCode;
+            const playerId = socket.data.playerId;
 
-        const marked = roomService.markDisconnected(
-            playerId,
-            socket.id,
-            expireDisconnectedPlayer
-        );
+            if (!roomCode || !playerId) return;
 
-        if (!marked) return;
+            const marked = roomService.markDisconnected(
+                playerId,
+                socket.id,
+                expireDisconnectedPlayer
+            );
 
-        const room = roomService.getRoom(roomCode);
+            if (!marked) return;
 
-        io.to(roomCode).emit(
-            "room:playersUpdated",
-            room.players
-        );
+            const room = roomService.getRoom(roomCode);
 
-    } catch (error) {
-        console.error(
-            "Disconnect cleanup error:",
-            error.message
-        );
-    }
-});
+            io.to(roomCode).emit(
+                "room:playersUpdated",
+                room.players
+            );
+
+        } catch (error) {
+            console.error(
+                "Disconnect cleanup error:",
+                error.message
+            );
+        }
+    });
 
 }
 

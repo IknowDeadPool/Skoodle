@@ -1,0 +1,390 @@
+
+.sk-game {
+  min-height: 100vh;
+  padding: 24px;
+  background: #f3f4fa;
+  color: #172033;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.sk-game * {
+  box-sizing: border-box;
+}
+
+.sk-game-shell {
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+.sk-game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.sk-game-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sk-game-logo {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: #7c3aed;
+  color: white;
+  font-size: 23px;
+}
+
+.sk-game-brand h1 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: -0.8px;
+}
+
+.sk-game-room {
+  margin: 3px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.sk-game-btn {
+  padding: 11px 17px;
+  border: 0;
+  border-radius: 11px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.sk-game-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.sk-game-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sk-game-btn-primary {
+  background: #7c3aed;
+  color: white;
+}
+
+.sk-game-btn-primary:hover:not(:disabled) {
+  background: #6d28d9;
+}
+
+.sk-game-btn-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.sk-game-btn-danger:hover:not(:disabled) {
+  background: #fecaca;
+}
+
+.sk-game-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.sk-game-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 15px 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
+  background: white;
+}
+
+.sk-game-stat-label {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.sk-game-stat-value {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.sk-game-timer-low {
+  color: #dc2626;
+}
+
+.sk-game-word {
+  margin-bottom: 18px;
+  padding: 16px 20px;
+  border: 1px solid #ddd6fe;
+  border-radius: 15px;
+  background: #f5f3ff;
+  text-align: center;
+}
+
+.sk-game-word-label {
+  margin-bottom: 7px;
+  color: #6d28d9;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sk-game-word-value {
+  font-size: clamp(20px, 3vw, 30px);
+  font-weight: 800;
+  letter-spacing: 3px;
+  overflow-wrap: anywhere;
+}
+
+.sk-game-choices {
+  margin-bottom: 18px;
+  padding: 18px;
+  border-radius: 15px;
+  background: white;
+  border: 1px solid #e2e8f0;
+}
+
+.sk-game-choices h3 {
+  margin: 0 0 14px;
+}
+
+.sk-game-choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sk-game-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+.sk-game-canvas-section {
+  min-width: 0;
+}
+
+.sk-game-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.sk-game-panel {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 5px 20px rgba(15, 23, 42, 0.04);
+}
+
+.sk-game-panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.sk-game-player-list {
+  padding: 8px 14px;
+}
+
+.sk-game-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 3px;
+}
+
+.sk-game-player + .sk-game-player {
+  border-top: 1px solid #f1f5f9;
+}
+
+.sk-game-player-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sk-game-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: #ede9fe;
+  color: #6d28d9;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.sk-game-player-name {
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.sk-game-player-role {
+  margin-top: 3px;
+  font-size: 11px;
+  color: #7c3aed;
+}
+
+.sk-game-score {
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sk-game-chat {
+  display: flex;
+  flex-direction: column;
+  height: 390px;
+}
+
+.sk-game-chat-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sk-game-message {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f1f5f9;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.sk-game-message.mine {
+  background: #ede9fe;
+}
+
+.sk-game-message.system {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.sk-game-message-name {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sk-game-chat-form {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.sk-game-chat-input {
+  min-width: 0;
+  flex: 1;
+  padding: 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  outline: none;
+  font: inherit;
+  font-size: 13px;
+}
+
+.sk-game-chat-input:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px #ede9fe;
+}
+
+.sk-game-chat-input:disabled {
+  background: #f8fafc;
+}
+
+.sk-game-error {
+  padding: 0 14px 12px;
+  color: #dc2626;
+  font-size: 12px;
+}
+
+.sk-game-finished {
+  max-width: 560px;
+  margin: 70px auto;
+  padding: 36px;
+  border-radius: 22px;
+  background: white;
+  text-align: center;
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
+}
+
+.sk-game-finished h1 {
+  font-size: 34px;
+}
+
+.sk-game-final-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+@media (max-width: 1000px) {
+  .sk-game-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sk-game-sidebar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .sk-game {
+    padding: 12px;
+  }
+
+  .sk-game-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .sk-game-stats .sk-game-stat:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .sk-game-sidebar {
+    display: flex;
+  }
+
+  .sk-game-stat {
+    padding: 12px;
+  }
+
+  .sk-game-chat {
+    height: 350px;
+  }
+
+  .sk-game-brand h1 {
+    font-size: 21px;
+  }
+}

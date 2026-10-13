@@ -1,8 +1,15 @@
 
-import { useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent
+} from "react";
+
 import { useGameState } from "../hooks/useGameState";
 import { socket } from "../services/socket";
 import DrawingCanvas from "../components/game/DrawingCanvas/DrawingCanvas";
+import "./GamePage.css";
 
 export default function GamePage() {
   const {
@@ -27,16 +34,25 @@ export default function GamePage() {
   const [guess, setGuess] = useState("");
   const [error, setError] = useState("");
 
-  
-const isDrawer = playerId !== null && playerId === drawerId;
-console.log("GAME DEBUG:", {
-  playerId,
-  drawerId,
-  socketId: socket.id,
-  hostId: room?.hostId,
-  isDrawer,
-  wordChoices,
-});
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const isDrawer =
+    playerId !== null && playerId === drawerId;
+
+  const drawer = players.find(
+    player => player.id === drawerId
+  );
+
+  const sortedPlayers = [...players].sort(
+    (a, b) => b.score - a.score
+  );
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest"
+    });
+  }, [messages]);
 
   function sendGuess(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,141 +83,314 @@ console.log("GAME DEBUG:", {
   }
 
   if (!room) {
-    return <p>No room found.</p>;
+    return (
+      <main className="sk-game">
+        <p>No room found.</p>
+      </main>
+    );
   }
 
   if (finished) {
     return (
-      <main>
-        <h1>Game Over</h1>
-        <h2>Winner: {winner?.name || "No winner"}</h2>
+      <main className="sk-game">
+        <div className="sk-game-finished">
+          <div style={{ fontSize: 48 }}>🏆</div>
 
-        <h3>Final Scores</h3>
-        {finalScores.map(player => (
-          <p key={player.id}>
-            {player.name}: {player.score}
-          </p>
-        ))}
+          <h1>Game Over!</h1>
 
-        <button onClick={leaveRoom}>Leave Game</button>
+          <h2>
+            Winner: {winner?.name || "No winner"}
+          </h2>
+
+          <h3>Final Scores</h3>
+
+          {[...finalScores]
+            .sort((a, b) => b.score - a.score)
+            .map((player, index) => (
+              <div
+                className="sk-game-final-row"
+                key={player.id}
+              >
+                <span>
+                  {index === 0 ? "🥇 " : ""}
+                  {player.name}
+                </span>
+
+                <strong>{player.score} pts</strong>
+              </div>
+            ))}
+
+          <button
+            className="sk-game-btn sk-game-btn-danger"
+            style={{ marginTop: 24 }}
+            onClick={leaveRoom}
+          >
+            Leave Game
+          </button>
+        </div>
       </main>
     );
   }
 
   return (
-    <main style={{ padding: 20 }}>
-      <h1>Skoodle</h1>
+    <main className="sk-game">
+      <div className="sk-game-shell">
 
-      <p>Room: {room.roomCode}</p>
-      <p>Round: {round} / {room.settings.rounds}</p>
+        {/* Header */}
+        <header className="sk-game-header">
+          <div className="sk-game-brand">
+            <div className="sk-game-logo">✏️</div>
 
-      <p>
-        Drawing:{" "}
-        {players.find(player => player.id === drawerId)?.name ||
-          "Waiting..."}
-      </p>
-
-      <p>
-  {isDrawing ? "Drawing Time" : "Word Selection Time"}: {timeLeft}s
-</p>  
-
-
-
-      {/* Word selection */}
-      {isDrawer && wordChoices.length > 0 && !isDrawing && (
-        <section>
-          <h3>Choose a word</h3>
-          {wordChoices.map(word => (
-            <button
-              key={word}
-              onClick={() => selectWord(word)}
-            >
-              {word}
-            </button>
-          ))}
-        </section>
-      )}
-
-      {/* Word hint */}
-      {isDrawing && (
-  <h3>
-    {isDrawer
-      ? `Word : ${selectedWord || "Loading word..."}`
-      : `Guess the word: ${maskedWord}`}
-  </h3>
-)}
-
-      <div
-        style={{
-          display: "flex",
-          gap: 20,
-          flexWrap: "wrap",
-          alignItems: "flex-start",
-        }}
-      >
-        {/* Canvas */}
-        <section style={{ flex: "2 1 500px" }}>
-          <h3>Canvas</h3>
-          <DrawingCanvas />
-        </section>
-
-        {/* Sidebar */}
-        <aside style={{ flex: "1 1 260px" }}>
-          <h3>Scoreboard</h3>
-
-          {players.map(player => (
-            <p key={player.id}>
-              {player.name}: {player.score}
-              {player.id === drawerId ? " (Drawing)" : ""}
-            </p>
-          ))}
-
-          <h3>Chat / Guesses</h3>
-
-          <div
-            style={{
-              height: 260,
-              overflowY: "auto",
-              border: "1px solid gray",
-              padding: 10,
-              backgroundColor: "white",
-            }}
-          >
-            {messages.map((entry, index) => (
-              <p key={index}>
-                <strong>
-                  {entry.playerId
-                    ? players.find(p => p.id === entry.playerId)?.name ||
-                      "Player"
-                    : "System"}
-                  :
-                </strong>{" "}
-                {entry.message}
+            <div>
+              <h1>Skoodle</h1>
+              <p className="sk-game-room">
+                Room: {room.roomCode}
               </p>
-            ))}
+            </div>
           </div>
 
-          <form onSubmit={sendGuess}>
-            <input
-              value={guess}
-              onChange={event => setGuess(event.target.value)}
-              placeholder="Type your guess"
-              disabled={!isDrawing || isDrawer}
-            />
+          <button
+            className="sk-game-btn sk-game-btn-danger"
+            onClick={leaveRoom}
+          >
+            Leave Room
+          </button>
+        </header>
 
-            <button
-              type="submit"
-              disabled={!isDrawing || isDrawer || !guess.trim()}
-            >
-              Send
-            </button>
-          </form>
+        {/* Game statistics */}
+        <section className="sk-game-stats">
+          <div className="sk-game-stat">
+            <div>
+              <div className="sk-game-stat-label">
+                ROUND
+              </div>
+              <div className="sk-game-stat-value">
+                {round} / {room.settings.rounds}
+              </div>
+            </div>
+            <span>🎯</span>
+          </div>
 
-          {error && <p style={{ color: "red" }}>{error}</p>}
-        </aside>
+          <div className="sk-game-stat">
+            <div>
+              <div className="sk-game-stat-label">
+                {isDrawing
+                  ? "DRAWING TIME"
+                  : "WORD SELECTION"}
+              </div>
+              <div
+                className={`sk-game-stat-value ${
+                  timeLeft <= 10
+                    ? "sk-game-timer-low"
+                    : ""
+                }`}
+              >
+                {timeLeft}s
+              </div>
+            </div>
+            <span>⏱️</span>
+          </div>
+
+          <div className="sk-game-stat">
+            <div>
+              <div className="sk-game-stat-label">
+                CURRENT ARTIST
+              </div>
+              <div className="sk-game-stat-value">
+                {drawer?.name || "Waiting..."}
+              </div>
+            </div>
+            <span>🎨</span>
+          </div>
+        </section>
+
+        {/* Word selection */}
+        {isDrawer &&
+          wordChoices.length > 0 &&
+          !isDrawing && (
+            <section className="sk-game-choices">
+              <h3>Choose a word to draw</h3>
+
+              <div className="sk-game-choice-row">
+                {wordChoices.map(word => (
+                  <button
+                    key={word}
+                    className="sk-game-btn sk-game-btn-primary"
+                    onClick={() => selectWord(word)}
+                  >
+                    {word}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+        {/* Word hint */}
+        {isDrawing && (
+          <section className="sk-game-word">
+            <div className="sk-game-word-label">
+              {isDrawer
+                ? "YOUR WORD"
+                : "GUESS THE WORD"}
+            </div>
+
+            <div className="sk-game-word-value">
+              {isDrawer
+                ? selectedWord || "Loading word..."
+                : maskedWord}
+            </div>
+          </section>
+        )}
+
+        {/* Main layout */}
+        <div className="sk-game-layout">
+          <section className="sk-game-canvas-section">
+            <DrawingCanvas />
+          </section>
+
+          <aside className="sk-game-sidebar">
+
+            {/* Scoreboard */}
+            <section className="sk-game-panel">
+              <div className="sk-game-panel-title">
+                <span>🏆 Scoreboard</span>
+                <span>{players.length} players</span>
+              </div>
+
+              <div className="sk-game-player-list">
+                {sortedPlayers.map(player => (
+                  <div
+                    key={player.id}
+                    className="sk-game-player"
+                  >
+                    <div className="sk-game-player-info">
+                      <div className="sk-game-avatar">
+                        {player.name.charAt(0).toUpperCase()}
+                      </div>
+
+                      <div>
+                        <div className="sk-game-player-name">
+                          {player.name}
+                          {player.id === playerId
+                            ? " (You)"
+                            : ""}
+                        </div>
+
+                        {player.id === drawerId && (
+                          <div className="sk-game-player-role">
+                            ✏️ Drawing
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="sk-game-score">
+                      {player.score} pts
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Chat */}
+            <section className="sk-game-panel">
+              <div className="sk-game-panel-title">
+                <span>💬 Live Chat</span>
+                <span>Guesses</span>
+              </div>
+
+              <div className="sk-game-chat">
+                <div className="sk-game-chat-messages">
+                  {messages.length === 0 && (
+                    <p
+                      style={{
+                        color: "#94a3b8",
+                        fontSize: 13,
+                        textAlign: "center"
+                      }}
+                    >
+                      No guesses yet. Be the first!
+                    </p>
+                  )}
+
+                  {messages.map((entry, index) => {
+                    const isSystem = !entry.playerId;
+                    const isMine =
+                      entry.playerId === playerId;
+
+                    const name = isSystem
+                      ? "System"
+                      : players.find(
+                          p => p.id === entry.playerId
+                        )?.name || "Player";
+
+                    return (
+                      <div
+                        key={index}
+                        className={`sk-game-message ${
+                          isSystem
+                            ? "system"
+                            : isMine
+                              ? "mine"
+                              : ""
+                        }`}
+                      >
+                        <span className="sk-game-message-name">
+                          {name}
+                        </span>
+
+                        <span>{entry.message}</span>
+                      </div>
+                    );
+                  })}
+
+                  <div ref={chatEndRef} />
+                </div>
+
+                <form
+                  className="sk-game-chat-form"
+                  onSubmit={sendGuess}
+                >
+                  <input
+                    className="sk-game-chat-input"
+                    value={guess}
+                    onChange={event =>
+                      setGuess(event.target.value)
+                    }
+                    placeholder={
+                      isDrawer
+                        ? "You're drawing..."
+                        : isDrawing
+                          ? "Type your guess..."
+                          : "Waiting for next turn..."
+                    }
+                    disabled={!isDrawing || isDrawer}
+                  />
+
+                  <button
+                    className="sk-game-btn sk-game-btn-primary"
+                    type="submit"
+                    disabled={
+                      !isDrawing ||
+                      isDrawer ||
+                      !guess.trim()
+                    }
+                  >
+                    Send ➤
+                  </button>
+                </form>
+
+                {error && (
+                  <div className="sk-game-error">
+                    {error}
+                  </div>
+                )}
+              </div>
+            </section>
+
+          </aside>
+        </div>
       </div>
-
-      <button onClick={leaveRoom}>Leave Room</button>
     </main>
   );
 }

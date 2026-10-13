@@ -1,0 +1,205 @@
+
+.skoodle-board {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.08);
+}
+
+.skoodle-board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.skoodle-board-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.skoodle-board-status {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.skoodle-board-status.active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.skoodle-canvas-wrap {
+  position: relative;
+  width: 100%;
+  background: white;
+  overflow: hidden;
+}
+
+.skoodle-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: white;
+  touch-action: none;
+}
+
+.skoodle-eraser-cursor {
+  position: absolute;
+  border: 1.5px solid #334155;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.skoodle-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.skoodle-tool-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.skoodle-tool-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 9px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  background: white;
+  color: #334155;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s, border-color 0.15s;
+}
+
+.skoodle-tool-button:hover:not(:disabled) {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+  transform: translateY(-1px);
+}
+
+.skoodle-tool-button.selected {
+  background: #7c3aed;
+  border-color: #7c3aed;
+  color: white;
+}
+
+.skoodle-tool-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.skoodle-tool-button.danger {
+  color: #dc2626;
+}
+
+.skoodle-tool-button.danger:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.skoodle-color-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+}
+
+.skoodle-color {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #cbd5e1;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.skoodle-color:hover {
+  transform: scale(1.12);
+}
+
+.skoodle-color.selected {
+  outline: 2px solid #7c3aed;
+  outline-offset: 3px;
+}
+
+.skoodle-custom-color {
+  width: 34px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid #cbd5e1;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+}
+
+.skoodle-size-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.skoodle-size-control input {
+  flex: 1;
+  min-width: 120px;
+  accent-color: #7c3aed;
+}
+
+.skoodle-size-value {
+  min-width: 45px;
+  text-align: center;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+@media (max-width: 600px) {
+  .skoodle-board {
+    border-radius: 14px;
+  }
+
+  .skoodle-toolbar {
+    padding: 12px;
+  }
+
+  .skoodle-tool-button {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .skoodle-color {
+    width: 27px;
+    height: 27px;
+  }
+}

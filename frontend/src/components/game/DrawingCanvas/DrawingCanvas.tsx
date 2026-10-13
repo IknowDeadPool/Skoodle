@@ -1,184 +1,9 @@
 
-// import { useEffect, useRef, useState } from "react";
-// import type { PointerEvent } from "react";
-// import { socket } from "../../../services/socket";
-// import { useGameState } from "../../../hooks/useGameState";
-
-// interface Stroke {
-//   x0: number;
-//   y0: number;
-//   x1: number;
-//   y1: number;
-//   color: string;
-//   width: number;
-// }
-
-// const CANVAS_WIDTH = 800;
-// const CANVAS_HEIGHT = 500;
-
-// export default function DrawingCanvas() {
-//   const { drawerId, isDrawing, round } = useGameState();
-
-//   const canvasRef = useRef<HTMLCanvasElement>(null);
-//   const drawingRef = useRef(false);
-//   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
-
-//   const [color, setColor] = useState("#000000");
-//   const [brushSize, setBrushSize] = useState(4);
-
-//   const canDraw = socket.id === drawerId && isDrawing;
-
-//   function drawStroke(stroke: Stroke) {
-//     const context = canvasRef.current?.getContext("2d");
-//     if (!context) return;
-
-//     context.beginPath();
-//     context.moveTo(stroke.x0, stroke.y0);
-//     context.lineTo(stroke.x1, stroke.y1);
-//     context.strokeStyle = stroke.color;
-//     context.lineWidth = stroke.width;
-//     context.lineCap = "round";
-//     context.lineJoin = "round";
-//     context.stroke();
-//   }
-
-//   function clearCanvas() {
-//     const context = canvasRef.current?.getContext("2d");
-//     if (!context) return;
-
-//     context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-//   }
-
-//   useEffect(() => {
-//     function onStroke(stroke: Stroke) {
-//       drawStroke(stroke);
-//     }
-
-//     function onClear() {
-//       clearCanvas();
-//     }
-
-//     socket.on("draw:stroke", onStroke);
-//     socket.on("draw:clear", onClear);
-
-//     return () => {
-//       socket.off("draw:stroke", onStroke);
-//       socket.off("draw:clear", onClear);
-//     };
-//   }, []);
-
-//   useEffect(() => {
-//     drawingRef.current = false;
-//     lastPointRef.current = null;
-//     clearCanvas();
-//   }, [drawerId, round]);
-
-//   function getPoint(event: PointerEvent<HTMLCanvasElement>) {
-//     const rect = event.currentTarget.getBoundingClientRect();
-
-//     return {
-//       x: ((event.clientX - rect.left) / rect.width) * CANVAS_WIDTH,
-//       y: ((event.clientY - rect.top) / rect.height) * CANVAS_HEIGHT,
-//     };
-//   }
-
-//   function handlePointerDown(event: PointerEvent<HTMLCanvasElement>) {
-//     if (!canDraw) return;
-
-//     event.currentTarget.setPointerCapture(event.pointerId);
-//     drawingRef.current = true;
-//     lastPointRef.current = getPoint(event);
-//   }
-
-//   function handlePointerMove(event: PointerEvent<HTMLCanvasElement>) {
-//     if (!canDraw || !drawingRef.current || !lastPointRef.current) return;
-
-//     const point = getPoint(event);
-
-//     const stroke: Stroke = {
-//       x0: lastPointRef.current.x,
-//       y0: lastPointRef.current.y,
-//       x1: point.x,
-//       y1: point.y,
-//       color,
-//       width: brushSize,
-//     };
-
-//     drawStroke(stroke);
-//     socket.emit("draw:stroke", stroke);
-
-//     lastPointRef.current = point;
-//   }
-
-//   function handlePointerUp() {
-//     drawingRef.current = false;
-//     lastPointRef.current = null;
-//   }
-
-//   function handleClear() {
-//     if (!canDraw) return;
-
-//     clearCanvas();
-//     socket.emit("draw:clear", {});
-//   }
-
-//   return (
-//     <div>
-//       <canvas
-//         ref={canvasRef}
-//         width={CANVAS_WIDTH}
-//         height={CANVAS_HEIGHT}
-//         onPointerDown={handlePointerDown}
-//         onPointerMove={handlePointerMove}
-//         onPointerUp={handlePointerUp}
-//         onPointerCancel={handlePointerUp}
-//         style={{
-//           width: "100%",
-//           maxWidth: "800px",
-//           border: "1px solid black",
-//           backgroundColor: "white",
-//           touchAction: "none",
-//           cursor: canDraw ? "crosshair" : "default",
-//         }}
-//       />
-
-//       {canDraw && (
-//         <div>
-//           <label>
-//             Color:
-//             <input
-//               type="color"
-//               value={color}
-//               onChange={event => setColor(event.target.value)}
-//             />
-//           </label>
-
-//           <label>
-//             Brush size:
-//             <input
-//               type="range"
-//               min="2"
-//               max="20"
-//               value={brushSize}
-//               onChange={event => setBrushSize(Number(event.target.value))}
-//             />
-//           </label>
-
-//           <button onClick={handleClear}>Clear</button>
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
-
-
-
-
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { socket } from "../../../services/socket";
 import { useGameState } from "../../../hooks/useGameState";
+import "./DrawingCanvas.css";
 
 type Point = { x: number; y: number };
 type Tool = "pen" | "eraser" | "fill";
@@ -540,111 +365,171 @@ const canDraw = isDrawer && isDrawing;
   }
 
   return (
-    <div style={{ width: "100%", maxWidth: WIDTH }}>
-      <div style={{ position: "relative" }}>
-        <canvas
-          ref={canvasRef}
-          width={WIDTH}
-          height={HEIGHT}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          onPointerEnter={() => setCursorVisible(true)}
-          onPointerLeave={() => setCursorVisible(false)}
+  <div className="skoodle-board">
+    <div className="skoodle-board-header">
+      <span className="skoodle-board-title">
+        🎨 Drawing Board
+      </span>
+
+      <span
+        className={`skoodle-board-status ${
+          canDraw ? "active" : ""
+        }`}
+      >
+        {canDraw
+          ? "● Your turn to draw"
+          : isDrawing
+            ? "Watching the drawing"
+            : "Waiting for drawing"}
+      </span>
+    </div>
+
+    <div className="skoodle-canvas-wrap">
+      <canvas
+        ref={canvasRef}
+        className="skoodle-canvas"
+        width={WIDTH}
+        height={HEIGHT}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onPointerEnter={() => setCursorVisible(true)}
+        onPointerLeave={() => setCursorVisible(false)}
+        style={{
+          cursor: canDraw
+            ? tool === "eraser"
+              ? "none"
+              : "crosshair"
+            : "default"
+        }}
+      />
+
+      {canDraw && tool === "eraser" && cursorVisible && (
+        <div
+          ref={cursorRef}
+          className="skoodle-eraser-cursor"
           style={{
-            display: "block",
-            width: "100%",
-            height: "auto",
-            border: "1px solid #aaa",
-            backgroundColor: "#fff",
-            touchAction: "none",
-            cursor: canDraw && tool === "eraser" ? "none" :
-              canDraw ? "crosshair" : "default"
+            width: eraserSize,
+            height: eraserSize
           }}
         />
-
-        {canDraw && tool === "eraser" && cursorVisible && (
-          <div
-            ref={cursorRef}
-            style={{
-              position: "absolute",
-              width: eraserSize,
-              height: eraserSize,
-              borderRadius: "50%",
-              border: "1px solid #333",
-              backgroundColor: "rgba(255,255,255,0.25)",
-              pointerEvents: "none",
-              transform: "translate(-50%, -50%)"
-            }}
-          />
-        )}
-      </div>
-
-      {canDraw && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button onClick={() => setTool("pen")} disabled={tool === "pen"}>
-              Pen
-            </button>
-            <button onClick={() => setTool("eraser")} disabled={tool === "eraser"}>
-              Eraser
-            </button>
-            <button onClick={() => setTool("fill")} disabled={tool === "fill"}>
-              Fill
-            </button>
-            <button onClick={() => handleAction("undo")} disabled={!undoCount}>
-              Undo
-            </button>
-            <button onClick={() => handleAction("redo")} disabled={!redoCount}>
-              Redo
-            </button>
-            <button onClick={() => handleAction("clear")}>
-              Clear
-            </button>
-          </div>
-
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {COLORS.map(c => (
-              <button
-                key={c}
-                onClick={() => setColor(c)}
-                title={c}
-                style={{
-                  width: 28,
-                  height: 28,
-                  backgroundColor: c,
-                  border: color === c ? "3px solid #555" : "1px solid #aaa",
-                  borderRadius: 4,
-                  cursor: "pointer"
-                }}
-              />
-            ))}
-            <input
-              type="color"
-              value={color}
-              onChange={event => setColor(event.target.value)}
-            />
-          </div>
-
-          {tool !== "fill" && (
-            <label>
-              {tool === "pen" ? "Pen size" : "Eraser size"}: {size}px
-              <input
-                type="range"
-                min={tool === "pen" ? 1 : 5}
-                max={tool === "pen" ? 40 : 80}
-                value={size}
-                onChange={event =>
-                  tool === "pen"
-                    ? setPenSize(Number(event.target.value))
-                    : setEraserSize(Number(event.target.value))
-                }
-              />
-            </label>
-          )}
-        </div>
       )}
     </div>
-  );
+
+    {canDraw && (
+      <div className="skoodle-toolbar">
+        <div className="skoodle-tool-row">
+          <button
+            className={`skoodle-tool-button ${
+              tool === "pen" ? "selected" : ""
+            }`}
+            onClick={() => setTool("pen")}
+            aria-pressed={tool === "pen"}
+          >
+            ✏️ Pen
+          </button>
+
+          <button
+            className={`skoodle-tool-button ${
+              tool === "eraser" ? "selected" : ""
+            }`}
+            onClick={() => setTool("eraser")}
+            aria-pressed={tool === "eraser"}
+          >
+            🧽 Eraser
+          </button>
+
+          <button
+            className={`skoodle-tool-button ${
+              tool === "fill" ? "selected" : ""
+            }`}
+            onClick={() => setTool("fill")}
+            aria-pressed={tool === "fill"}
+          >
+            🪣 Fill
+          </button>
+
+          <button
+            className="skoodle-tool-button"
+            onClick={() => handleAction("undo")}
+            disabled={!undoCount}
+          >
+            ↶ Undo
+          </button>
+
+          <button
+            className="skoodle-tool-button"
+            onClick={() => handleAction("redo")}
+            disabled={!redoCount}
+          >
+            ↷ Redo
+          </button>
+
+          <button
+            className="skoodle-tool-button danger"
+            onClick={() => handleAction("clear")}
+          >
+            🗑 Clear
+          </button>
+        </div>
+
+        <div className="skoodle-color-row">
+          {COLORS.map(c => (
+            <button
+              key={c}
+              className={`skoodle-color ${
+                color === c ? "selected" : ""
+              }`}
+              onClick={() => {
+                setColor(c);
+                setTool("pen");
+              }}
+              style={{ backgroundColor: c }}
+              title={c}
+              aria-label={`Select color ${c}`}
+              aria-pressed={color === c}
+            />
+          ))}
+
+          <input
+            className="skoodle-custom-color"
+            type="color"
+            value={color}
+            title="Custom color"
+            aria-label="Custom color"
+            onChange={event => {
+              setColor(event.target.value);
+              setTool("pen");
+            }}
+          />
+        </div>
+
+        {tool !== "fill" && (
+          <label className="skoodle-size-control">
+            <span>
+              {tool === "pen" ? "Brush size" : "Eraser size"}
+            </span>
+
+            <input
+              type="range"
+              min={tool === "pen" ? 1 : 5}
+              max={tool === "pen" ? 40 : 80}
+              value={size}
+              onChange={event =>
+                tool === "pen"
+                  ? setPenSize(Number(event.target.value))
+                  : setEraserSize(Number(event.target.value))
+              }
+            />
+
+            <span className="skoodle-size-value">
+              {size}px
+            </span>
+          </label>
+        )}
+      </div>
+    )}
+  </div>
+);
 }
