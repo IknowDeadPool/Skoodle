@@ -1,4 +1,4 @@
-# Skoodle 🎨
+# Skoodle
 
 **Skoodle** is a real-time multiplayer drawing-and-guessing web game. Create a private room, invite friends with a room link, take turns drawing, and race to guess the word before time runs out.
 
@@ -64,6 +64,10 @@ Hints are based on **percentage of the turn elapsed**, not fixed seconds. For ex
 
 The game never reveals the entire word through hints before the turn ends. Short words reveal fewer letters.
 
+## Repository
+
+**GitHub:** [IknowDeadPool/Skoodle](https://github.com/IknowDeadPool/Skoodle)
+
 ## Getting Started
 
 ### Prerequisites
@@ -74,43 +78,54 @@ The game never reveals the entire word through hints before the turn ends. Short
 ### 1. Clone the repository
 
 ```bash
-git clone <YOUR_REPOSITORY_URL>
-cd <YOUR_REPOSITORY_FOLDER>
+git clone https://github.com/IknowDeadPool/Skoodle.git
+cd Skoodle
 ```
 
-### 2. Install dependencies
+### 2. Enable one-command development
 
-Install dependencies separately for the frontend and backend. Adjust directory names if your repository uses different names:
+To run both services together, create or update the **root-level `package.json`** (next to the `frontend/` and `backend/` folders). This assumes each workspace defines an `npm run dev` script:
+
+```json
+{
+  "name": "skoodle",
+  "private": true,
+  "workspaces": ["frontend", "backend"],
+  "scripts": {
+    "dev": "concurrently -k -n BACKEND,FRONTEND \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build -w frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
+```
+
+> **Note:** Commit this root `package.json` along with the README. The one-command workflow only works after the root scripts are present and both workspace folders match the names above. If the backend does not yet have a `dev` script, add one appropriate to its entry point.
+
+### 3. Install dependencies (first time only)
+
+From the repository root:
 
 ```bash
-cd frontend
-npm install
-
-cd ../backend
 npm install
 ```
 
-### 3. Configure the connection
+npm workspaces installs the frontend, backend, and root development dependencies together.
 
-Ensure the frontend Socket.IO client connects to your running backend. Set any required environment variables according to your project's `socket` configuration and backend server entry point.
+### 4. Configure the connection
 
-### 4. Start the application
+Ensure the frontend Socket.IO client points to your local backend server. If your project uses environment variables, create the required local `.env` files before starting the app. Do not commit secrets or `.env` files.
 
-In separate terminals, run the frontend and backend development scripts defined in their respective `package.json` files. For example, if both packages define a `dev` script:
+### 5. Start both services
 
 ```bash
-# Terminal 1
-cd backend
 npm run dev
 ```
 
-```bash
-# Terminal 2
-cd frontend
-npm run dev
-```
+This runs the backend and frontend `dev` scripts in the same terminal. Open the local URL printed by Vite. Press **Ctrl+C** to stop both services.
 
-Open the local URL printed by Vite. **Note:** Confirm the exact folder names, scripts, ports, and environment-variable names in your repository before publishing these setup instructions.
+For multiplayer testing, open two browser tabs or devices. Invite links to `localhost` are only usable on the local machine; public invites require deployment.
 
 ## Playing a Game
 
@@ -191,6 +206,4 @@ For larger deployments, consider shared session/game-state storage, distributed 
 - [ ] End-of-game drawing replay
 - [ ] Production deployment and monitoring
 
-## License
 
-Add a `LICENSE` file if you want to specify how others may use, modify, and distribute this project.
