@@ -79,15 +79,7 @@ export default function LobbyPage({
     };
   }, []);
 
-  async function copyInviteLink() {
-    try {
-      await navigator.clipboard.writeText(inviteLink);
-      setCopied(true);
-      setError("");
-    } catch {
-      setError("Unable to copy link. Please copy it manually.");
-    }
-  }
+
 
   function startGame() {
     setStarting(true);
@@ -120,30 +112,42 @@ export default function LobbyPage({
   }
 
   function leaveRoom() {
-    setLeaving(true);
-    setError("");
+  setLeaving(true);
+  setError("");
 
-    socket.timeout(5000).emit(
-      "room:leave",
-      (
-        timeoutError: Error | null,
-        response?: { success: boolean; error?: string }
-      ) => {
-        setLeaving(false);
+  socket.timeout(5000).emit(
+    "room:leave",
+    {},
+    (
+      timeoutError: Error | null,
+      response?: { success: boolean; error?: string }
+    ) => {
+      setLeaving(false);
 
-        if (timeoutError) {
-          setError("Unable to leave room. Please try again.");
-          return;
-        }
-
-        if (response?.success) {
-          onLeave();
-        } else {
-          setError(response?.error || "Unable to leave room");
-        }
+      if (timeoutError) {
+        setError("Unable to leave room. Please try again.");
+        return;
       }
-    );
+
+      if (response?.success) {
+        onLeave();
+      } else {
+        setError(response?.error || "Unable to leave room");
+      }
+    }
+  );
+}
+
+  async function copyInviteLink() {
+  try {
+    await navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    setError("");
+  } catch {
+    setCopied(false);
+    setError("Could not copy the invite link. Please copy it manually.");
   }
+}
 
   return (
     <main className="sk-lobby">

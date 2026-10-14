@@ -216,6 +216,10 @@ function restoreSession() {
       setWordChoices(choices);
     }
 
+    function onHintUpdated(data: { maskedWord: string }) {
+  setMaskedWord(data.maskedWord);
+}
+
     // function onDrawingStarted(data: {
     //   drawerId: string;
     //   maskedWord: string;
@@ -278,6 +282,7 @@ function restoreSession() {
     socket.on("game:turnStarted", onTurnStarted);
     socket.on("game:wordChoices", onWordChoices);
     socket.on("game:drawingStarted", onDrawingStarted);
+    socket.on("game:hintUpdated", onHintUpdated);
     socket.on("chat:message", onChatMessage);
     socket.on("game:closeGuess", onCloseGuess);
     socket.on("game:correctGuess", onCorrectGuess);
@@ -290,6 +295,7 @@ function restoreSession() {
       socket.off("game:turnStarted", onTurnStarted);
       socket.off("game:wordChoices", onWordChoices);
       socket.off("game:drawingStarted", onDrawingStarted);
+      socket.off("game:hintUpdated", onHintUpdated);
       socket.off("chat:message", onChatMessage);
       socket.off("game:closeGuess", onCloseGuess);
       socket.off("game:correctGuess", onCorrectGuess);
@@ -368,25 +374,6 @@ function restoreSession() {
       },
     );
   }
-
-//   function leaveRoom() {
-//   // Clear the browser session immediately.
-//   clearPlayerSession();
-
-//   // Update React immediately.
-//   setRoom(null);
-//   setPlayerId(null);
-
-//   // Notify the backend without blocking navigation.
-//   if (socket.connected) {
-//     socket.emit("room:leave");
-//   }
-// }
-  // console.log("GAME PROVIDER STATE:", {
-  //   room: room?.roomCode,
-  //   round,
-  //   drawerId,
-  // });
 
   console.log("PROVIDER STATE:", {
     playerId,

@@ -10,15 +10,31 @@ class RoomService {
         this.sessions = new Map();
     }
 
+    // createRoom(type, host, settings) {
+
+    //     let roomCode;
+
+    //     do {
+    //         roomCode = crypto.randomBytes(3).toString('hex').toUpperCase();
+    //     } while (this.Rooms.has(roomCode));
+
+
+    //     if (!["PRIVATE", "PUBLIC"].includes(type)) {
+    //         throw new Error("Invalid room type");
+    //     }
+
+    //     if (type === "PRIVATE" && !host?.id) {
+    //         throw new Error("Private room requires a host");
+    //     }
+
+    //     const room = new Room(roomCode, type, host, settings);
+
+    //     this.Rooms.set(room.getRoomCode(), room);
+    //     return room;
+
+    // }
+
     createRoom(type, host, settings) {
-
-        let roomCode;
-
-        do {
-            roomCode = crypto.randomBytes(3).toString('hex').toUpperCase();
-        } while (this.Rooms.has(roomCode));
-
-
         if (!["PRIVATE", "PUBLIC"].includes(type)) {
             throw new Error("Invalid room type");
         }
@@ -27,11 +43,104 @@ class RoomService {
             throw new Error("Private room requires a host");
         }
 
-        const room = new Room(roomCode, type, host, settings);
+        const defaults = {
+            rounds: 3,
+            drawTime: 80,
+            wordMode: "default",
+            customWords: []
+        };
+
+        const input = settings ?? defaults;
+
+        if (
+            typeof input !== "object" ||
+            Array.isArray(input)
+        ) {
+            throw new Error("Invalid room settings");
+        }
+
+        const rounds = input.rounds ?? defaults.rounds;
+        const drawTime = input.drawTime ?? defaults.drawTime;
+        const wordMode = input.wordMode ?? defaults.wordMode;
+
+        if (
+            !Number.isInteger(rounds) ||
+            rounds < 2 ||
+            rounds > 10
+        ) {
+            throw new Error("Rounds must be between 2 and 10");
+        }
+
+        if (![30, 60, 80, 120].includes(drawTime)) {
+            throw new Error("Invalid drawing time");
+        }
+
+        if (!["default", "custom"].includes(wordMode)) {
+            throw new Error("Invalid word mode");
+        }
+
+        let customWords = [];
+
+        if (wordMode === "custom") {
+            if (!Array.isArray(input.customWords)) {
+                throw new Error("Custom words must be an array");
+            }
+
+            if (input.customWords.length > 200) {
+                throw new Error("Too many custom words");
+            }
+
+            if (
+                input.customWords.some(
+                    word =>
+                        typeof word !== "string" ||
+                        word.trim().length < 2 ||
+                        word.trim().length > 40
+                )
+            ) {
+                throw new Error(
+                    "Custom words must contain 2–40 characters"
+                );
+            }
+
+            customWords = [
+                ...new Set(
+                    input.customWords.map(word => word.trim())
+                )
+            ];
+
+            if (customWords.length < 3) {
+                throw new Error(
+                    "Enter at least 3 unique custom words"
+                );
+            }
+        }
+
+        const validatedSettings = {
+            rounds,
+            drawTime,
+            wordMode,
+            customWords
+        };
+
+        let roomCode;
+
+        do {
+            roomCode = crypto.randomBytes(3)
+                .toString("hex")
+                .toUpperCase();
+        } while (this.Rooms.has(roomCode));
+
+        const room = new Room(
+            roomCode,
+            type,
+            host,
+            validatedSettings
+        );
 
         this.Rooms.set(room.getRoomCode(), room);
-        return room;
 
+        return room;
     }
 
     joinRoom(roomCode, player) {
@@ -98,23 +207,23 @@ class RoomService {
         return room;
     }
 
-   
 
-getAvailableRooms() {
-  return [...this.Rooms.values()]
-        .filter(room => {
-            if (room.type !== "PUBLIC") return false;
 
-            if (!["WAITING", "PLAYING"].includes(room.status)) {
-                return false;
-            }
+    getAvailableRooms() {
+        return [...this.Rooms.values()]
+            .filter(room => {
+                if (room.type !== "PUBLIC") return false;
 
-            const maxPlayers = room.settings?.maxPlayers ?? 8;
+                if (!["WAITING", "PLAYING"].includes(room.status)) {
+                    return false;
+                }
 
-            return room.players.length < maxPlayers;
-        })
-        .sort((a, b) => b.players.length - a.players.length);
-}
+                const maxPlayers = room.settings?.maxPlayers ?? 8;
+
+                return room.players.length < maxPlayers;
+            })
+            .sort((a, b) => b.players.length - a.players.length);
+    }
 
     createSession(roomCode, player, socketId) {
         const token = crypto.randomBytes(32).toString("hex");

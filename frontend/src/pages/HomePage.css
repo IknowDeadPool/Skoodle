@@ -261,3 +261,60 @@
     padding: 12px 15px;
   }
 }
+
+
+
+.sk-home-invite-code {
+  background: #f3efff;
+  color: #7c3aed;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  font-size: 18px;
+  margin: 16px 0 24px;
+}
+
+.sk-home-invite-code strong {
+  letter-spacing: 2px;
+}
+
+
+
+.sk-room-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 24px;
+  background: #faf8ff;
+  border: 1px solid #e9e3f8;
+  border-radius: 16px;
+}
+
+.sk-room-settings h2 {
+  margin: 0 0 8px;
+  color: #29213d;
+  font-size: 20px;
+}
+
+.sk-room-settings textarea {
+  min-height: 100px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.sk-room-settings-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #777084;
+}
+
+.sk-room-settings-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.sk-room-settings-actions button {
+  flex: 1;
+}

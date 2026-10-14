@@ -1,15 +1,31 @@
 function createGameController(io, getGame, games) {
 
 
-    function clearGameTimer(game) {
-        if (game.timer) {
-            clearTimeout(game.timer);
-        }
+    // function clearGameTimer(game) {
+    //     if (game.timer) {
+    //         clearTimeout(game.timer);
+    //     }
 
-        game.timer = null;
-        game.turnEndsAt = null;
-        game.wordSelectionEndsAt = null;
+    //     game.timer = null;
+    //     game.turnEndsAt = null;
+    //     game.wordSelectionEndsAt = null;
+    // }
+
+
+    function clearGameTimer(game) {
+    if (game.timer) {
+        clearTimeout(game.timer);
     }
+
+    if (game.hintTimer) {
+        clearInterval(game.hintTimer);
+    }
+
+    game.timer = null;
+    game.hintTimer = null;
+    game.turnEndsAt = null;
+    game.wordSelectionEndsAt = null;
+}
 
 
     function finishGame(roomCode, game, forcedWinner = null) {
@@ -80,20 +96,68 @@ function createGameController(io, getGame, games) {
         }
     }
 
-    function scheduleTurnEnd(roomCode, game) {
-        clearGameTimer(game);
+    // function scheduleTurnEnd(roomCode, game) {
+    //     clearGameTimer(game);
 
-        const duration = Number(game.room.settings.drawTime) || 80;
-        game.turnEndsAt = Date.now() + duration * 1000;
-        game.wordSelectionEndsAt = null;
+    //     const duration = Number(game.room.settings.drawTime) || 80;
+    //     game.turnEndsAt = Date.now() + duration * 1000;
+    //     game.wordSelectionEndsAt = null;
 
-        game.timer = setTimeout(() => {
-            if (games.get(roomCode) !== game) return;
-            if (game.state !== "DRAWING") return;
+    //     game.timer = setTimeout(() => {
+    //         if (games.get(roomCode) !== game) return;
+    //         if (game.state !== "DRAWING") return;
 
-            advanceTurn(roomCode, game);
-        }, duration * 1000);
-    }
+    //         advanceTurn(roomCode, game);
+    //     }, duration * 1000);
+    // }
+
+
+    
+function scheduleTurnEnd(roomCode, game) {
+    clearGameTimer(game);
+
+    const duration = Number(game.room.settings.drawTime) || 80;
+
+    game.turnEndsAt = Date.now() + duration * 1000;
+    game.wordSelectionEndsAt = null;
+
+    // Initial masked word at the start of drawing.
+    let lastHint = game.getCurrentHint();
+
+    // Broadcast hints as the drawing progresses.
+    game.hintTimer = setInterval(() => {
+        if (games.get(roomCode) !== game) {
+            clearInterval(game.hintTimer);
+            game.hintTimer = null;
+            return;
+        }
+
+        if (game.state !== "DRAWING") {
+            clearInterval(game.hintTimer);
+            game.hintTimer = null;
+            return;
+        }
+
+        const hint = game.getCurrentHint();
+
+        if (hint !== lastHint) {
+            lastHint = hint;
+
+            io.to(roomCode).emit("game:hintUpdated", {
+                maskedWord: hint
+            });
+        }
+    }, 1000);
+
+    // Existing timeout: end the turn at its deadline.
+    game.timer = setTimeout(() => {
+        if (games.get(roomCode) !== game) return;
+        if (game.state !== "DRAWING") return;
+
+        advanceTurn(roomCode, game);
+    }, duration * 1000);
+}
+
 
     function sendWordChoices(roomCode, game) {
         clearGameTimer(game);

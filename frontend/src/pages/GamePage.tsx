@@ -194,7 +194,7 @@ export default function GamePage() {
           <div className="sk-game-stat">
             <div>
               <div className="sk-game-stat-label">
-                CURRENT ARTIST
+               Drawing
               </div>
               <div className="sk-game-stat-value">
                 {drawer?.name || "Waiting..."}

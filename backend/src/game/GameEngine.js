@@ -16,7 +16,13 @@ class GameEngine {
         this.guessedPlayers = new Set();
 
         this.currentRound = 0;
-        this.wordManager = new WordManager(words);
+
+        const selectedWords =
+            room.settings.wordMode === "custom"
+                ? room.settings.customWords
+                : words;
+        this.wordManager = new WordManager(selectedWords);
+        this.hintIndices = [];
 
         this.drawing = new DrawingManager();
 
@@ -102,6 +108,7 @@ class GameEngine {
         this.wordChoices = [];
         this.guessedPlayers.clear();
         this.state = "WORD_SELECTION";
+        this.hintIndices = [];
         this.drawing.resetTurn();
 
         this.turnEndsAt = null;
@@ -110,15 +117,15 @@ class GameEngine {
 
 
     getRemainingTime() {
-    if (this.state !== "DRAWING" || !this.turnEndsAt) {
-        return 0;
-    }
+        if (this.state !== "DRAWING" || !this.turnEndsAt) {
+            return 0;
+        }
 
-    return Math.max(
-        0,
-        Math.ceil((this.turnEndsAt - Date.now()) / 1000)
-    );
-}
+        return Math.max(
+            0,
+            Math.ceil((this.turnEndsAt - Date.now()) / 1000)
+        );
+    }
 
     checkGameOver() {
         if (this.state === "WAITING" || this.state === "FINISHED") {
@@ -164,10 +171,11 @@ class GameEngine {
             round: this.currentRound,
             drawerId: drawer?.getId() ?? null,
 
-            maskedWord:
-                this.state === "DRAWING" && this.currentWord
-                    ? this.wordManager.maskWord(this.currentWord)
-                    : null,
+            // maskedWord:
+            //     this.state === "DRAWING" && this.currentWord
+            //         ? this.wordManager.maskWord(this.currentWord)
+            //         : null,
+            maskedWord: this.getCurrentHint(),
 
             endsAt,
             remainingTime,
@@ -208,11 +216,25 @@ class GameEngine {
         }
 
         this.currentWord = selectedWord;
+        const letterIndices = [...selectedWord]
+            .map((character, index) =>
+                character === " " ? null : index
+            )
+            .filter(index => index !== null);
+
+        for (let i = letterIndices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+
+            [letterIndices[i], letterIndices[j]] =
+                [letterIndices[j], letterIndices[i]];
+        }
+
+        this.hintIndices = letterIndices;
 
         this.state = "DRAWING";
 
-    //     this.turnEndsAt =
-    // Date.now() + this.room.settings.drawTime * 1000;
+        //     this.turnEndsAt =
+        // Date.now() + this.room.settings.drawTime * 1000;
         return this.wordManager.maskWord(selectedWord);
     }
 
@@ -245,26 +267,26 @@ class GameEngine {
         }
 
         if (guess === answer) {
-    const timeLeft = this.getRemainingTime();
+            const timeLeft = this.getRemainingTime();
 
-    if (timeLeft <= 0) {
-        return { status: "INVALID" };
-    }
+            if (timeLeft <= 0) {
+                return { status: "INVALID" };
+            }
 
-    const points = ScoringStrategy.calculateGuessPoints(
-        timeLeft,
-        this.room.settings.drawTime
-    );
+            const points = ScoringStrategy.calculateGuessPoints(
+                timeLeft,
+                this.room.settings.drawTime
+            );
 
-    player.addScore(points);
-    this.guessedPlayers.add(playerId);
+            player.addScore(points);
+            this.guessedPlayers.add(playerId);
 
-    return {
-        status: "CORRECT",
-        playerId,
-        points
-    };
-}
+            return {
+                status: "CORRECT",
+                playerId,
+                points
+            };
+        }
 
         const distance = this.levenshtein(guess, answer);
 
@@ -274,6 +296,50 @@ class GameEngine {
 
         return { status: "INCORRECT" };
     }
+
+
+    
+getCurrentHint() {
+    if (this.state !== "DRAWING" || !this.currentWord) {
+        return null;
+    }
+
+    const totalTime = this.room.settings.drawTime;
+    const timeLeft = this.getRemainingTime();
+
+    const elapsedRatio = Math.max(
+        0,
+        Math.min(1, (totalTime - timeLeft) / totalTime)
+    );
+
+    let revealCount = 0;
+
+    if (elapsedRatio >= 0.75) {
+        revealCount = 3;
+    } else if (elapsedRatio >= 0.50) {
+        revealCount = 2;
+    } else if (elapsedRatio >= 0.25) {
+        revealCount = 1;
+    }
+
+    // Never reveal the entire word.
+    const maxReveals = Math.max(
+        0,
+        [...this.currentWord].filter(c => c !== " ").length - 1
+    );
+
+    revealCount = Math.min(revealCount, maxReveals);
+
+    const revealedIndices = new Set(
+        this.hintIndices.slice(0, revealCount)
+    );
+
+    return this.wordManager.revealLetters(
+        this.currentWord,
+        revealedIndices
+    );
+}
+
 
     levenshtein(a, b) {
         const dp = Array.from(

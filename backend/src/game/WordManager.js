@@ -35,6 +35,22 @@ class WordManager {
 
         return masked.join('').trimEnd();
     }
+
+    
+revealLetters(word, revealedIndices) {
+    return [...word]
+        .map((character, index) => {
+            if (character === " ") {
+                return " ";
+            }
+
+            return revealedIndices.has(index)
+                ? character
+                : "_";
+        })
+        .join(" ");
+}
+
 }
 
 module.exports = WordManager;
